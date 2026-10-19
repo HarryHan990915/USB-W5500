@@ -1,0 +1,2 @@
+../L1_Driver/test_led.c:4:6:test_led_init	1
+../L1_Driver/test_led.c:9:6:test_led_set	1

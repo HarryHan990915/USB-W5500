@@ -1,0 +1,8 @@
+../L2_Service/diag_service.c:11:6:diag_latency_init	8	static
+../L2_Service/diag_service.c:16:6:diag_latency_mark_start	8	static
+../L2_Service/diag_service.c:21:6:diag_latency_mark_end	8	static
+../L2_Service/diag_service.c:26:10:diag_latency_get_last_us	8	static
+../L2_Service/diag_service.c:31:6:diag_log	16	static
+../L2_Service/diag_service.c:36:6:diag_run_w5500_selftest	240	static
+../L2_Service/diag_service.c:56:5:diag_link_up	8	static
+../L2_Service/diag_service.c:61:5:diag_run_full_selftest	24	static

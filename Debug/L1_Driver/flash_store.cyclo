@@ -1,0 +1,4 @@
+../L1_Driver/flash_store.c:11:17:crc32_calc	3
+../L1_Driver/flash_store.c:24:6:flash_store_defaults	1
+../L1_Driver/flash_store.c:37:5:flash_store_read	3
+../L1_Driver/flash_store.c:53:5:flash_store_write	4

@@ -1,0 +1,7 @@
+../ThirdParty/scpi-parser/libscpi/src/expression.c:53:27:numericRange	4
+../ThirdParty/scpi-parser/libscpi/src/expression.c:84:20:SCPI_ExprNumericListEntry	12
+../ThirdParty/scpi-parser/libscpi/src/expression.c:135:20:SCPI_ExprNumericListEntryInt	3
+../ThirdParty/scpi-parser/libscpi/src/expression.c:166:20:SCPI_ExprNumericListEntryDouble	3
+../ThirdParty/scpi-parser/libscpi/src/expression.c:192:27:channelSpec	5
+../ThirdParty/scpi-parser/libscpi/src/expression.c:226:27:channelRange	6
+../ThirdParty/scpi-parser/libscpi/src/expression.c:267:20:SCPI_ExprChannelListEntry	18

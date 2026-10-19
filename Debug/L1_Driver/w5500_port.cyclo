@@ -1,0 +1,16 @@
+../L1_Driver/w5500_port.c:20:13:spi_bus_settle	2
+../L1_Driver/w5500_port.c:25:13:cs_sel	1
+../L1_Driver/w5500_port.c:26:13:cs_desel	1
+../L1_Driver/w5500_port.c:28:16:spi_rb	1
+../L1_Driver/w5500_port.c:35:13:spi_wb	1
+../L1_Driver/w5500_port.c:48:13:spi_rburst	3
+../L1_Driver/w5500_port.c:60:13:spi_wburst	3
+../L1_Driver/w5500_port.c:71:13:w5500_hw_reset	1
+../L1_Driver/w5500_port.c:79:5:w5500_port_init	3
+../L1_Driver/w5500_port.c:119:6:w5500_get_mac	1
+../L1_Driver/w5500_port.c:135:14:w5500_selftest	3
+../L1_Driver/w5500_port.c:150:5:w5500_link_up	1
+../L1_Driver/w5500_port.c:155:6:w5500_set_static_ip	1
+../L1_Driver/w5500_port.c:170:9:w5500_hardened_recv	12
+../L1_Driver/w5500_port.c:238:6:w5500_port_set_int_callback	1
+../L1_Driver/w5500_port.c:245:6:HAL_GPIO_EXTI_Callback	3

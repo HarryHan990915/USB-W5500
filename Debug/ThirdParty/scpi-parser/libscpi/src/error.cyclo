@@ -1,0 +1,10 @@
+../ThirdParty/scpi-parser/libscpi/src/error.c:55:6:SCPI_ErrorInit	1
+../ThirdParty/scpi-parser/libscpi/src/error.c:63:13:SCPI_ErrorEmitEmpty	5
+../ThirdParty/scpi-parser/libscpi/src/error.c:78:13:SCPI_ErrorEmit	3
+../ThirdParty/scpi-parser/libscpi/src/error.c:90:6:SCPI_ErrorClear	1
+../ThirdParty/scpi-parser/libscpi/src/error.c:108:13:SCPI_ErrorPop	3
+../ThirdParty/scpi-parser/libscpi/src/error.c:123:9:SCPI_ErrorCount	1
+../ThirdParty/scpi-parser/libscpi/src/error.c:131:20:SCPI_ErrorAddInternal	3
+../ThirdParty/scpi-parser/libscpi/src/error.c:179:6:SCPI_ErrorPushEx	8
+../ThirdParty/scpi-parser/libscpi/src/error.c:208:6:SCPI_ErrorPush	1
+../ThirdParty/scpi-parser/libscpi/src/error.c:218:14:SCPI_ErrorTranslate	123

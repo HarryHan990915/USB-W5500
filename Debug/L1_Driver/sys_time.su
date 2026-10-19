@@ -1,0 +1,3 @@
+../L1_Driver/sys_time.c:6:10:sys_tick_ms	8	static
+../L1_Driver/sys_time.c:11:6:sys_time_init	8	static
+../L1_Driver/sys_time.c:16:10:sys_time_us	8	static

@@ -1,0 +1,17 @@
+../L3_App/scpi_commands.c:16:22:TEST_EchoQ	296	static
+../L3_App/scpi_commands.c:33:22:TEST_StrLenQ	296	static
+../L3_App/scpi_commands.c:49:22:TEST_StrUpperQ	424	static
+../L3_App/scpi_commands.c:67:22:TEST_StrReverseQ	424	static
+../L3_App/scpi_commands.c:85:22:TEST_StrCrcQ	312	static
+../L3_App/scpi_commands.c:104:22:TEST_StrStore	296	static
+../L3_App/scpi_commands.c:120:22:TEST_StrStoreQ	160	static
+../L3_App/scpi_commands.c:129:22:TEST_CountQ	16	static
+../L3_App/scpi_commands.c:136:22:CoreTstQ	16	static
+../L3_App/scpi_commands.c:143:22:SYSTem_ConfigSave	16	static
+../L3_App/scpi_commands.c:150:22:DIAGnostic_LatencyQ	16	static
+../L3_App/scpi_commands.c:157:22:TEST_LedBlink	24	static
+../L3_App/scpi_commands.c:176:22:TEST_LedAbort	16	static
+../L3_App/scpi_commands.c:183:22:TEST_LedInterval	24	static
+../L3_App/scpi_commands.c:194:22:TEST_LedIntervalQ	16	static
+../L3_App/scpi_commands.c:201:22:TEST_LedStatusQ	80	static
+../L3_App/scpi_commands.c:240:6:scpi_commands_register	24	static
