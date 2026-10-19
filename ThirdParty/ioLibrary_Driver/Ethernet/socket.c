@@ -389,7 +389,7 @@ int8_t close(uint8_t sn) {
 #endif
     setSn_CR(sn, Sn_CR_CLOSE);
     /* wait to process the command... */
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+    while (getSn_CR(sn));
     /* clear all interrupt of SOCKETn. */
     setSn_IR(sn, 0xFF);
     //A20150401 : Release the sock_io_mode of socket n.
@@ -398,7 +398,7 @@ int8_t close(uint8_t sn) {
     sock_is_sending &= ~(1 << sn);
     sock_remained_size[sn] = 0;
     sock_pack_info[sn] = PACK_NONE;
-    WAIT_UNTIL_OR_TIMEOUT(getSn_SR(sn) == SOCK_CLOSED);
+    while (getSn_SR(sn) != SOCK_CLOSED);
     return SOCK_OK;
 }
 
@@ -407,7 +407,7 @@ int8_t listen(uint8_t sn) {
     CHECK_TCPMODE();
     CHECK_SOCKINIT();
     setSn_CR(sn, Sn_CR_LISTEN);
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+    while (getSn_CR(sn));
     while (getSn_SR(sn) != SOCK_LISTEN) {
         close(sn);
         return SOCKERR_SOCKCLOSED;
@@ -502,26 +502,15 @@ int8_t disconnect(uint8_t sn) {
     if (getSn_SR(sn) != SOCK_CLOSED) {
         setSn_CR(sn, Sn_CR_DISCON);
         /* wait to process the command... */
-        WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+        while (getSn_CR(sn));
         sock_is_sending &= ~(1 << sn);
         if (sock_io_mode & (1 << sn)) {
             return SOCK_BUSY;
         }
-        {
-            uint32_t _wait_iters = 0;
-            while (getSn_SR(sn) != SOCK_CLOSED) {
-                if (getSn_IR(sn) & Sn_IR_TIMEOUT) {
-                    close(sn);
-                    return SOCKERR_TIMEOUT;
-                }
-                if (++_wait_iters >= WIZCHIP_BUSY_WAIT_MAX) {
-                    /* Sn_IR_TIMEOUT itself is read over the same SPI link,
-                     * so it isn't a safe escape hatch on its own if that
-                     * read is what's being misread — this iteration cap is
-                     * the real backstop. */
-                    close(sn);
-                    return SOCKERR_TIMEOUT;
-                }
+        while (getSn_SR(sn) != SOCK_CLOSED) {
+            if (getSn_IR(sn) & Sn_IR_TIMEOUT) {
+                close(sn);
+                return SOCKERR_TIMEOUT;
             }
         }
     }
@@ -599,7 +588,6 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len) {
     setSn_TX_WRSR(sn, len);
 #endif
     if (sock_is_sending & (1 << sn)) {
-        uint32_t _wait_iters = 0;
         while (!(getSn_IR(sn) & Sn_IR_SENDOK)) {
             tmp = getSn_SR(sn);
             if ((tmp != SOCK_ESTABLISHED) && (tmp != SOCK_CLOSE_WAIT)) {
@@ -611,15 +599,12 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len) {
             if (sock_io_mode & (1 << sn)) {
                 return SOCK_BUSY;
             }
-            if (++_wait_iters >= WIZCHIP_BUSY_WAIT_MAX) {
-                return SOCKERR_TIMEOUT;
-            }
         }
         setSn_IR(sn, Sn_IR_SENDOK);
     }
     setSn_CR(sn, Sn_CR_SEND);
 
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);  // wait to process the command...
+    while (getSn_CR(sn));  // wait to process the command...
     sock_is_sending |= (1 << sn);
 
     return len;
@@ -769,7 +754,7 @@ int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len) { //lihan
     }
     wiz_recv_data(sn, buf, len);
     setSn_CR(sn, Sn_CR_RECV);
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+    while (getSn_CR(sn));
 #endif
 
     //M20150409 : Explicit Type Casting
@@ -919,39 +904,28 @@ static int32_t sendto_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * ad
     setSn_CR(sn, Sn_CR_SEND);
 #endif
     /* wait to process the command... */
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
-    {
-        uint32_t _wait_iters = 0;
-        while (1) {
-            tmp = getSn_IR(sn);
-            if (tmp & Sn_IR_SENDOK) {
-                setSn_IR(sn, Sn_IR_SENDOK);
-                break;
-            }
-            //M:20131104
-            //else if(tmp & Sn_IR_TIMEOUT) return SOCKERR_TIMEOUT;
-            else if (tmp & Sn_IR_TIMEOUT) {
-                setSn_IR(sn, Sn_IR_TIMEOUT);
-                //M20150409 : Fixed the lost of sign bits by type casting.
-                //len = (uint16_t)SOCKERR_TIMEOUT;
-                //break;
-#if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
-                if (taddr) {
-                    setSUBR((uint8_t*)&taddr);
-                }
-#endif
-                return SOCKERR_TIMEOUT;
-            }
-            if (++_wait_iters >= WIZCHIP_BUSY_WAIT_MAX) {
-#if _WIZCHIP_ < 5500
-                if (taddr) {
-                    setSUBR((uint8_t*)&taddr);
-                }
-#endif
-                return SOCKERR_TIMEOUT;
-            }
-            ////////////
+    while (getSn_CR(sn));
+    while (1) {
+        tmp = getSn_IR(sn);
+        if (tmp & Sn_IR_SENDOK) {
+            setSn_IR(sn, Sn_IR_SENDOK);
+            break;
         }
+        //M:20131104
+        //else if(tmp & Sn_IR_TIMEOUT) return SOCKERR_TIMEOUT;
+        else if (tmp & Sn_IR_TIMEOUT) {
+            setSn_IR(sn, Sn_IR_TIMEOUT);
+            //M20150409 : Fixed the lost of sign bits by type casting.
+            //len = (uint16_t)SOCKERR_TIMEOUT;
+            //break;
+#if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+            if (taddr) {
+                setSUBR((uint8_t*)&taddr);
+            }
+#endif
+            return SOCKERR_TIMEOUT;
+        }
+        ////////////
     }
 #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
     if (taddr) {
@@ -1076,7 +1050,7 @@ static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * 
         if (sock_remained_size[sn] == 0) {
             wiz_recv_data(sn, head, 8);
             setSn_CR(sn, Sn_CR_RECV);
-            WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+            while (getSn_CR(sn)) { }
             // read peer's IP address, port number & packet length
             //A20150601 : For W5300
 #if _WIZCHIP_ == 5300
@@ -1130,7 +1104,7 @@ static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * 
 #ifndef IPV6_AVAILABLE
             wiz_recv_data(sn, head, 2);
             setSn_CR(sn, Sn_CR_RECV);
-            WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+            while (getSn_CR(sn));
 #endif
             // read peer's IP address, port number & packet length
             sock_remained_size[sn] = head[0];
@@ -1162,7 +1136,7 @@ static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * 
 #ifndef IPV6_AVAILABLE
             wiz_recv_data(sn, head, 6);
             setSn_CR(sn, Sn_CR_RECV);
-            WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+            while (getSn_CR(sn));
             addr[0] = head[0];
             addr[1] = head[1];
             addr[2] = head[2];
@@ -1237,7 +1211,7 @@ static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * 
 #else
     setSn_CR(sn, Sn_CR_RECV);
     /* wait to process the command... */
-    WAIT_UNTIL_OR_TIMEOUT(getSn_CR(sn) == 0);
+    while (getSn_CR(sn)) ;
     sock_remained_size[sn] -= pack_len;
     //M20150601 :
     //if(sock_remained_size[sn] != 0) sock_pack_info[sn] |= 0x01;
@@ -1511,4 +1485,3 @@ int16_t peeksockmsg(uint8_t sn, uint8_t* submsg, uint16_t subsize) {
 
 #endif
 
-               
