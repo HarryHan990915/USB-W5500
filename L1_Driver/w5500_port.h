@@ -15,6 +15,11 @@ typedef struct {
 } w5500_selftest_t;
 
 int w5500_port_init(void);
+/* Re-unmasks SIMR/Sn_IMR so the chip can assert INTn again. Called once by
+ * w5500_port_init() at boot, and again by net_service.c on every link-up
+ * transition in case the chip's own power rail got cycled independently of
+ * the MCU's (see doc comment in w5500_port.c). */
+void w5500_arm_interrupts(void);
 drv_status_t w5500_selftest(w5500_selftest_t *r);
 int w5500_link_up(void);
 void w5500_set_static_ip(const uint8_t ip[4], const uint8_t sn[4], const uint8_t gw[4]);

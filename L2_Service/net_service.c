@@ -95,6 +95,13 @@ int net_service_is_serving(void)
 static void start_dhcp(void)
 {
     log_line("NET: link up, starting DHCP\r\n");
+    /* Defensive re-arm: if the W5500's own power rail got cycled
+     * independently of the MCU's since the last time the link was up, the
+     * chip silently reset SIMR/Sn_IMR back to 0x00 (masking every interrupt
+     * source) with no way for us to detect it directly — see
+     * w5500_arm_interrupts doc comment. A no-op if the chip was never
+     * actually reset. */
+    w5500_arm_interrupts();
     DHCP_init(DHCP_SOCKET, s_dhcp_buf);
     s_next_dhcp_tick_ms = sys_tick_ms() + 1000U;
     enter_state(NET_DHCP_RUNNING);

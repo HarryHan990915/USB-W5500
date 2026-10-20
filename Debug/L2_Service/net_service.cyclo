@@ -8,9 +8,9 @@
 ../L2_Service/net_service.c:85:6:net_service_register_int_wake	1
 ../L2_Service/net_service.c:90:5:net_service_is_serving	1
 ../L2_Service/net_service.c:95:13:start_dhcp	1
-../L2_Service/net_service.c:107:6:net_service_set_static_fallback	1
-../L2_Service/net_service.c:114:13:fall_back_to_static_ip	1
-../L2_Service/net_service.c:124:13:poll_wait_link	2
-../L2_Service/net_service.c:131:13:poll_dhcp_running	6
-../L2_Service/net_service.c:165:13:poll_serving	2
-../L2_Service/net_service.c:173:6:net_service_poll	5
+../L2_Service/net_service.c:114:6:net_service_set_static_fallback	1
+../L2_Service/net_service.c:121:13:fall_back_to_static_ip	1
+../L2_Service/net_service.c:131:13:poll_wait_link	2
+../L2_Service/net_service.c:138:13:poll_dhcp_running	6
+../L2_Service/net_service.c:172:13:poll_serving	2
+../L2_Service/net_service.c:180:6:net_service_poll	5

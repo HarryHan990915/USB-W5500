@@ -92,6 +92,13 @@ int w5500_port_init(void)
         return ret;
     }
 
+    w5500_arm_interrupts();
+
+    return 0;
+}
+
+void w5500_arm_interrupts(void)
+{
     /* IMR and SIMR both reset to 0x00, which — per the W5500 datasheet's
      * IR/SIR/SIMR description — blocks every socket event from ever
      * reaching the physical INTn pin, no matter what Sn_IMR says. That's why
@@ -103,13 +110,22 @@ int w5500_port_init(void)
      * Sn_IR[RECV] latches until software clears it (see the matching
      * setSn_IR() call in w5500_hardened_recv() below) — without that, INTn
      * would assert once on the first byte ever received and then stay low
-     * forever, since nothing re-arms it. */
+     * forever, since nothing re-arms it.
+     *
+     * This is pulled out of w5500_port_init() (which only ever runs once, at
+     * MCU boot) and also called from net_service.c every time the link comes
+     * back up: if the W5500's own power rail (separate from the STM32's, on
+     * this board) ever glitches or gets cycled independently, the chip
+     * resets these two registers back to 0x00 with no way for the MCU to
+     * notice — it just silently stops ever asserting INTn again, forever,
+     * since nothing else in this codebase re-touches them after boot. A
+     * link-up transition is the cheapest reliable point to defensively
+     * re-arm them: it costs a handful of SPI writes and is a no-op if the
+     * chip was never actually reset. */
     setSIMR(0xFF);
     for (uint8_t s = 0; s < 8; s++) {
         setSn_IMR(s, Sn_IR_RECV | Sn_IR_DISCON | Sn_IR_CON | Sn_IR_TIMEOUT);
     }
-
-    return 0;
 }
 
 /* STM32G071's 96-bit factory unique ID, per RM0444. Three consecutive 32-bit
