@@ -31,19 +31,21 @@ void app_net_task(void *argument)
          * all raise that interrupt and get handled immediately, no polling
          * needed for them.
          *
-         * The 1 s timeout is NOT a "missed interrupt" safety net — it's load
+         * The 5 s timeout is NOT a "missed interrupt" safety net — it's load
          * bearing for two things the W5500 has no interrupt source for at
          * all: PHYCFGR's link-up/link-down bit is a plain status bit with no
          * associated IR event (see w5500.h's IR_* defines — only CONFLICT/
          * UNREACH/PPPoE/MP exist at chip level, nothing for PHY link
          * change), so link_up_debounced() can only ever learn the link came
          * up by being polled; and DHCP_time_handler()'s retransmit timer is
-         * time-driven, not event-driven, and needs a roughly-once-per-second
-         * call regardless of socket traffic. Without this periodic wake,
-         * NetTask would block forever on osWaitForever right out of reset
-         * (nothing has happened on any socket yet to raise an interrupt),
-         * and DHCP would never even start. */
-        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 1000);
+         * time-driven, not event-driven, and needs a periodic call regardless
+         * of socket traffic (net_service.c's own DHCP_TIMEOUT_MS=15000
+         * fallback still works fine at this coarser granularity — it just
+         * advances in ~5 s steps instead of ~1 s). Without this periodic
+         * wake, NetTask would block forever on osWaitForever right out of
+         * reset (nothing has happened on any socket yet to raise an
+         * interrupt), and DHCP would never even start. */
+        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 5000);
         if (flags == osFlagsErrorTimeout) {
             s_net_timeout_wakes++;
         } else if ((flags & osFlagsError) == 0) {
@@ -115,6 +117,7 @@ void app_housekeep_task(void *argument)
             if (wn > 0) {
                 diag_log(wake_buf);
             }
+            diag_log_scpi_recv_stats();
         }
 
         osDelay(1000);

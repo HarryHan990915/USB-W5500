@@ -167,6 +167,24 @@ void w5500_set_static_ip(const uint8_t ip[4], const uint8_t sn[4], const uint8_t
 #define SR_VOTE_MIN_AGREE 3
 #define SN_CR_WAIT_MAX 10000
 
+static uint32_t s_recv_vote_fail = 0;
+static uint32_t s_recv_rsr_disagree = 0;
+static uint32_t s_recv_cr_timeout = 0;
+static uint32_t s_recv_success = 0;
+
+void w5500_get_recv_stats(uint32_t *vote_fail, uint32_t *rsr_disagree, uint32_t *cr_timeout, uint32_t *success)
+{
+    *vote_fail = s_recv_vote_fail;
+    *rsr_disagree = s_recv_rsr_disagree;
+    *cr_timeout = s_recv_cr_timeout;
+    *success = s_recv_success;
+}
+
+uint8_t w5500_get_socket_ir(uint8_t sn)
+{
+    return getSn_IR(sn);
+}
+
 int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
 {
     int agree = 0;
@@ -178,6 +196,7 @@ int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
         spi_bus_settle();
     }
     if (agree < SR_VOTE_MIN_AGREE) {
+        s_recv_vote_fail++;
         return -1; /* majority says the socket is gone; let the caller handle teardown */
     }
 
@@ -195,6 +214,7 @@ int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
         } else if (rsr3 == rsr2) {
             rsr = rsr2;
         } else {
+            s_recv_rsr_disagree++;
             return 0; /* three disagreeing reads — be conservative, try again next poll */
         }
     }
@@ -214,10 +234,12 @@ int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
              * already hardens recv() against elsewhere. This used to spin
              * NetTask forever, wedging the whole board until a physical
              * reset; bail out instead and let the caller retry next poll. */
+            s_recv_cr_timeout++;
             return -1;
         }
         spi_bus_settle();
     }
+    s_recv_success++;
 
     /* Per the W5500 datasheet, Sn_IR[RECV] stays set until software clears
      * it by writing 1 — it is NOT cleared by reading the data out above.

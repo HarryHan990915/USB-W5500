@@ -170,6 +170,14 @@ static scpi_result_t TEST_LedBlink(scpi_t *ctx)
         SCPI_ErrorPush(ctx, SCPI_ERROR_QUEUE_OVERFLOW);
         return SCPI_RES_ERR;
     }
+    /* Not required by SCPI (this isn't a query) — added purely as a
+     * transport-level diagnostic: this command has no other way to signal it
+     * arrived intact, so on a link that occasionally corrupts/drops a frame
+     * (see w5500_hardened_recv doc comment), silence after sending it is
+     * ambiguous between "command executed, nothing to report" and "command
+     * never arrived." An explicit ack turns that silence into a signal: no
+     * "OK" back means resend. */
+    SCPI_ResultText(ctx, "OK");
     return SCPI_RES_OK;
 }
 
@@ -177,6 +185,8 @@ static scpi_result_t TEST_LedAbort(scpi_t *ctx)
 {
     s_cmd_count++;
     led_bench_request_abort();
+    /* See TEST_LedBlink's comment — same transport-diagnostic ack. */
+    SCPI_ResultText(ctx, "OK");
     return SCPI_RES_OK;
 }
 

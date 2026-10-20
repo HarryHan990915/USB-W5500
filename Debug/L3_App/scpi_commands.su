@@ -10,8 +10,8 @@
 ../L3_App/scpi_commands.c:143:22:SYSTem_ConfigSave	16	static
 ../L3_App/scpi_commands.c:150:22:DIAGnostic_LatencyQ	16	static
 ../L3_App/scpi_commands.c:157:22:TEST_LedBlink	24	static
-../L3_App/scpi_commands.c:176:22:TEST_LedAbort	16	static
-../L3_App/scpi_commands.c:183:22:TEST_LedInterval	24	static
-../L3_App/scpi_commands.c:194:22:TEST_LedIntervalQ	16	static
-../L3_App/scpi_commands.c:201:22:TEST_LedStatusQ	80	static
-../L3_App/scpi_commands.c:240:6:scpi_commands_register	24	static
+../L3_App/scpi_commands.c:184:22:TEST_LedAbort	16	static
+../L3_App/scpi_commands.c:193:22:TEST_LedInterval	24	static
+../L3_App/scpi_commands.c:204:22:TEST_LedIntervalQ	16	static
+../L3_App/scpi_commands.c:211:22:TEST_LedStatusQ	80	static
+../L3_App/scpi_commands.c:250:6:scpi_commands_register	24	static

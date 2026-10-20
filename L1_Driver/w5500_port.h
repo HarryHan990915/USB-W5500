@@ -65,6 +65,19 @@ void w5500_clear_socket_ir(uint8_t sn);
  * unlike w5500_clear_socket_ir() above. */
 void w5500_clear_socket_con_discon_ir(uint8_t sn);
 
+/* Raw read of Sn_IR for diagnostics — e.g. logging whether it's stuck
+ * asserted (non-zero) when nothing should currently be pending. */
+uint8_t w5500_get_socket_ir(uint8_t sn);
+
+/* Running counts of which path w5500_hardened_recv() took, since boot.
+ * vote_fail/rsr_disagree/cr_timeout are the three "gave up, didn't touch
+ * Sn_IR" exit paths (see w5500_hardened_recv's body) — if these are
+ * incrementing a lot relative to success, the SPI link is unreliable enough
+ * that Sn_IR_RECV is frequently left set (never reaching the clearing line
+ * at the end), which would explain the shared INTn pin staying latched
+ * despite the CON/DISCON fix in scpi_server.c. */
+void w5500_get_recv_stats(uint32_t *vote_fail, uint32_t *rsr_disagree, uint32_t *cr_timeout, uint32_t *success);
+
 /* Registers a callback invoked from the W5500 INT EXTI ISR (falling edge).
  * Kept as a plain function pointer (no RTOS type in this HAL-only layer) so
  * L2_Service can wire it to a task wake without L1_Driver depending on

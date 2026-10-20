@@ -9,6 +9,12 @@ int diag_link_up(void);
 /* Full-system self-test backing *TST?: returns 0 on pass, nonzero on fail. */
 int diag_run_full_selftest(void);
 
+/* Logs W5500 socket-1 (the SCPI TCP socket) Sn_IR plus w5500_hardened_recv()'s
+ * running exit-path counters, to pin down whether the shared INTn pin staying
+ * latched is because Sn_IR never clears (vote_fail/rsr_disagree/cr_timeout
+ * climbing relative to success) versus something else. */
+void diag_log_scpi_recv_stats(void);
+
 /* TIM2-backed microsecond latency instrumentation, backing DIAGnostic:LATency?.
  * mark_start/mark_end bracket one SCPI command's receive-to-reply-sent span. */
 void diag_latency_init(void);

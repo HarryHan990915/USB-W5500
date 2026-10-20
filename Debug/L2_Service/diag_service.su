@@ -6,3 +6,4 @@
 ../L2_Service/diag_service.c:36:6:diag_run_w5500_selftest	240	static
 ../L2_Service/diag_service.c:56:5:diag_link_up	8	static
 ../L2_Service/diag_service.c:61:5:diag_run_full_selftest	24	static
+../L2_Service/diag_service.c:68:6:diag_log_scpi_recv_stats	160	static

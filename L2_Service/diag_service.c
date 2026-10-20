@@ -64,3 +64,23 @@ int diag_run_full_selftest(void)
     drv_status_t st = w5500_selftest(&r);
     return (st == DRV_OK) ? 0 : 1;
 }
+
+void diag_log_scpi_recv_stats(void)
+{
+    /* Socket 1 mirrors scpi_server.c's SCPI_FIRST_SOCKET (socket 0 is
+     * reserved for DHCP) — hardcoded here since that constant is private to
+     * scpi_server.c and this is a throwaway diagnostic, not a real
+     * dependency. */
+    uint8_t ir = w5500_get_socket_ir(1);
+    uint32_t vote_fail, rsr_disagree, cr_timeout, success;
+    w5500_get_recv_stats(&vote_fail, &rsr_disagree, &cr_timeout, &success);
+
+    char buf[96];
+    int n = snprintf(buf, sizeof(buf),
+        "RECV STATS: sock1_ir=0x%02X vote_fail=%lu rsr_disagree=%lu cr_timeout=%lu success=%lu\r\n",
+        ir, (unsigned long)vote_fail, (unsigned long)rsr_disagree,
+        (unsigned long)cr_timeout, (unsigned long)success);
+    if (n > 0) {
+        uart_log_write(buf, (uint16_t)n);
+    }
+}

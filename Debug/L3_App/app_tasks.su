@@ -1,5 +1,5 @@
 ../L3_App/app_tasks.c:25:6:app_net_task	24	static
-../L3_App/app_tasks.c:57:6:app_net_wake_from_isr	8	static
-../L3_App/app_tasks.c:62:6:app_scpi_task	16	static
-../L3_App/app_tasks.c:76:13:report_stack	88	static
-../L3_App/app_tasks.c:86:6:app_housekeep_task	120	static
+../L3_App/app_tasks.c:59:6:app_net_wake_from_isr	8	static
+../L3_App/app_tasks.c:64:6:app_scpi_task	16	static
+../L3_App/app_tasks.c:78:13:report_stack	88	static
+../L3_App/app_tasks.c:88:6:app_housekeep_task	120	static
