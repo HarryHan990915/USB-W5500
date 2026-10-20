@@ -8,21 +8,27 @@ C_SRCS += \
 ../L2_Service/config_service.c \
 ../L2_Service/diag_service.c \
 ../L2_Service/net_service.c \
+../L2_Service/scpi_queue.c \
 ../L2_Service/scpi_server.c \
+../L2_Service/scpi_short_task.c \
 ../L2_Service/string_service.c 
 
 OBJS += \
 ./L2_Service/config_service.o \
 ./L2_Service/diag_service.o \
 ./L2_Service/net_service.o \
+./L2_Service/scpi_queue.o \
 ./L2_Service/scpi_server.o \
+./L2_Service/scpi_short_task.o \
 ./L2_Service/string_service.o 
 
 C_DEPS += \
 ./L2_Service/config_service.d \
 ./L2_Service/diag_service.d \
 ./L2_Service/net_service.d \
+./L2_Service/scpi_queue.d \
 ./L2_Service/scpi_server.d \
+./L2_Service/scpi_short_task.d \
 ./L2_Service/string_service.d 
 
 
@@ -33,7 +39,7 @@ L2_Service/%.o L2_Service/%.su L2_Service/%.cyclo: ../L2_Service/%.c L2_Service/
 clean: clean-L2_Service
 
 clean-L2_Service:
-	-$(RM) ./L2_Service/config_service.cyclo ./L2_Service/config_service.d ./L2_Service/config_service.o ./L2_Service/config_service.su ./L2_Service/diag_service.cyclo ./L2_Service/diag_service.d ./L2_Service/diag_service.o ./L2_Service/diag_service.su ./L2_Service/net_service.cyclo ./L2_Service/net_service.d ./L2_Service/net_service.o ./L2_Service/net_service.su ./L2_Service/scpi_server.cyclo ./L2_Service/scpi_server.d ./L2_Service/scpi_server.o ./L2_Service/scpi_server.su ./L2_Service/string_service.cyclo ./L2_Service/string_service.d ./L2_Service/string_service.o ./L2_Service/string_service.su
+	-$(RM) ./L2_Service/config_service.cyclo ./L2_Service/config_service.d ./L2_Service/config_service.o ./L2_Service/config_service.su ./L2_Service/diag_service.cyclo ./L2_Service/diag_service.d ./L2_Service/diag_service.o ./L2_Service/diag_service.su ./L2_Service/net_service.cyclo ./L2_Service/net_service.d ./L2_Service/net_service.o ./L2_Service/net_service.su ./L2_Service/scpi_queue.cyclo ./L2_Service/scpi_queue.d ./L2_Service/scpi_queue.o ./L2_Service/scpi_queue.su ./L2_Service/scpi_server.cyclo ./L2_Service/scpi_server.d ./L2_Service/scpi_server.o ./L2_Service/scpi_server.su ./L2_Service/scpi_short_task.cyclo ./L2_Service/scpi_short_task.d ./L2_Service/scpi_short_task.o ./L2_Service/scpi_short_task.su ./L2_Service/string_service.cyclo ./L2_Service/string_service.d ./L2_Service/string_service.o ./L2_Service/string_service.su
 
 .PHONY: clean-L2_Service
 

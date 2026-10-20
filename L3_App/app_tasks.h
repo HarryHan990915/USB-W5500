@@ -2,7 +2,15 @@
 #define L3_APP_APP_TASKS_H
 
 void app_net_task(void *argument);
-void app_scpi_task(void *argument);
+/* Owns the scpi_t parser context; parses/dispatches short SCPI commands.
+ * Consumes raw bytes from scpi_rx_queue (filled by NetTask) and produces
+ * reply bytes onto scpi_tx_queue (drained by NetTask) — see
+ * openspec/changes/nettask-scpi-task-split. */
+void app_scpi_short_task(void *argument);
+/* Long-running SCPI command execution (TEST:LED:BLINk/ABORt). Renamed from
+ * app_scpi_task: it never parsed SCPI, it only ran led_bench_run() — see
+ * openspec/changes/nettask-scpi-task-split. */
+void app_scpi_long_task(void *argument);
 void app_housekeep_task(void *argument);
 
 /* Registered with net_service_register_int_wake(); wakes NetTask from the

@@ -1,6 +1,6 @@
 L3_App/app_tasks.o: ../L3_App/app_tasks.c ../L3_App/app_tasks.h \
  ../L2_Service/diag_service.h ../L2_Service/net_service.h \
- ../L2_Service/scpi_server.h \
+ ../L2_Service/scpi_server.h ../L2_Service/scpi_short_task.h \
  ../ThirdParty/scpi-parser/libscpi/inc/scpi/types.h \
  ../ThirdParty/scpi-parser/libscpi/inc/scpi/config.h \
  ../ThirdParty/scpi-parser/libscpi/inc/scpi/cc.h ../L3_App/led_bench.h \
@@ -19,6 +19,7 @@ L3_App/app_tasks.o: ../L3_App/app_tasks.c ../L3_App/app_tasks.h \
 ../L2_Service/diag_service.h:
 ../L2_Service/net_service.h:
 ../L2_Service/scpi_server.h:
+../L2_Service/scpi_short_task.h:
 ../ThirdParty/scpi-parser/libscpi/inc/scpi/types.h:
 ../ThirdParty/scpi-parser/libscpi/inc/scpi/config.h:
 ../ThirdParty/scpi-parser/libscpi/inc/scpi/cc.h:

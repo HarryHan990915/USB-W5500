@@ -67,10 +67,10 @@ int led_bench_request_start(int count)
         count = 0;
     }
     if (count > 600) {
-        /* Same guard as before: don't let a typo tie up ScpiTask for hours. */
+        /* Same guard as before: don't let a typo tie up ScpiLongTask for hours. */
         count = 600;
     }
-    /* Non-blocking put: NetTask must never block here. If the queue is full
+    /* Non-blocking put: ScpiShortTask must never block here. If the queue is full
      * (LED_BENCH_QUEUE_DEPTH requests already waiting), reject instead of
      * silently dropping — the caller reports SCPI_ERROR_QUEUE_OVERFLOW. */
     return osMessageQueuePut(s_queue, &count, 0, 0) == osOK ? 1 : 0;
@@ -99,7 +99,7 @@ void led_bench_run(void)
     int count;
 
     /* Blocks here — no idle polling — until a request is enqueued. This is
-     * what lets ScpiTask sit at zero CPU between benchmark runs instead of
+     * what lets ScpiLongTask sit at zero CPU between benchmark runs instead of
      * waking up every 100ms to check a flag. */
     if (osMessageQueueGet(s_queue, &count, NULL, osWaitForever) != osOK) {
         return;

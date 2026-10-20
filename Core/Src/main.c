@@ -57,10 +57,22 @@ const osThreadAttr_t NetTask_attributes = {
   .priority = (osPriority_t) osPriorityHigh,
   .stack_size = 256 * 4
 };
-/* Definitions for ScpiTask */
-osThreadId_t ScpiTaskHandle;
-const osThreadAttr_t ScpiTask_attributes = {
-  .name = "ScpiTask",
+/* Definitions for ScpiLongTask (renamed from ScpiTask: it never parsed SCPI,
+ * it only ever ran the long-running led_bench loop — see
+ * openspec/changes/nettask-scpi-task-split). Priority dropped from
+ * AboveNormal to Normal since ScpiShortTask now takes the AboveNormal slot
+ * for interactive command parsing. */
+osThreadId_t ScpiLongTaskHandle;
+const osThreadAttr_t ScpiLongTask_attributes = {
+  .name = "ScpiLongTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 384 * 4
+};
+/* Definitions for ScpiShortTask. Owns the scpi_t parser context and short
+ * command dispatch — see openspec/changes/nettask-scpi-task-split. */
+osThreadId_t ScpiShortTaskHandle;
+const osThreadAttr_t ScpiShortTask_attributes = {
+  .name = "ScpiShortTask",
   .priority = (osPriority_t) osPriorityAboveNormal,
   .stack_size = 384 * 4
 };
@@ -89,7 +101,8 @@ static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 void StartNetTask(void *argument);
-void StartScpiTask(void *argument);
+void StartScpiShortTask(void *argument);
+void StartScpiLongTask(void *argument);
 void StartHousekeepTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -164,8 +177,11 @@ int main(void)
   /* creation of NetTask */
   NetTaskHandle = osThreadNew(StartNetTask, NULL, &NetTask_attributes);
 
-  /* creation of ScpiTask */
-  ScpiTaskHandle = osThreadNew(StartScpiTask, NULL, &ScpiTask_attributes);
+  /* creation of ScpiShortTask */
+  ScpiShortTaskHandle = osThreadNew(StartScpiShortTask, NULL, &ScpiShortTask_attributes);
+
+  /* creation of ScpiLongTask */
+  ScpiLongTaskHandle = osThreadNew(StartScpiLongTask, NULL, &ScpiLongTask_attributes);
 
   /* creation of HousekeepTask */
   HousekeepTaskHandle = osThreadNew(StartHousekeepTask, NULL, &HousekeepTask_attributes);
@@ -495,18 +511,32 @@ void StartNetTask(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartScpiTask */
+/* USER CODE BEGIN Header_StartScpiShortTask */
 /**
-* @brief Function implementing the ScpiTask thread.
+* @brief Function implementing the ScpiShortTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartScpiTask */
-void StartScpiTask(void *argument)
+/* USER CODE END Header_StartScpiShortTask */
+void StartScpiShortTask(void *argument)
 {
-  /* USER CODE BEGIN StartScpiTask */
-  app_scpi_task(argument);
-  /* USER CODE END StartScpiTask */
+  /* USER CODE BEGIN StartScpiShortTask */
+  app_scpi_short_task(argument);
+  /* USER CODE END StartScpiShortTask */
+}
+
+/* USER CODE BEGIN Header_StartScpiLongTask */
+/**
+* @brief Function implementing the ScpiLongTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartScpiLongTask */
+void StartScpiLongTask(void *argument)
+{
+  /* USER CODE BEGIN StartScpiLongTask */
+  app_scpi_long_task(argument);
+  /* USER CODE END StartScpiLongTask */
 }
 
 /* USER CODE BEGIN Header_StartHousekeepTask */

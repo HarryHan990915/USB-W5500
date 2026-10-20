@@ -1,0 +1,4 @@
+../L2_Service/scpi_short_task.c:22:15:scpi_write_cb	344	static
+../L2_Service/scpi_short_task.c:53:6:scpi_short_task_init	80	static
+../L2_Service/scpi_short_task.c:70:21:find_slot	24	static
+../L2_Service/scpi_short_task.c:80:6:scpi_short_task_run	328	static

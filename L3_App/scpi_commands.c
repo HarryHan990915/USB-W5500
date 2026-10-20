@@ -1,5 +1,5 @@
 #include "scpi_commands.h"
-#include "scpi_server.h"
+#include "scpi_short_task.h"
 #include "string_service.h"
 #include "config_service.h"
 #include "diag_service.h"
@@ -162,10 +162,10 @@ static scpi_result_t TEST_LedBlink(scpi_t *ctx)
         return SCPI_RES_ERR;
     }
     /* Not a query — returns immediately. The actual blinking runs in
-     * ScpiTask (see led_bench.c/app_tasks.c), so this never blocks NetTask,
-     * and TEST:LED:STATus? can be polled for progress while it runs. Queued
-     * (not just stashed), so back-to-back requests don't clobber each other
-     * while ScpiTask is still working through an earlier one. */
+     * ScpiLongTask (see led_bench.c/app_tasks.c), so this never blocks the
+     * caller, and TEST:LED:STATus? can be polled for progress while it runs.
+     * Queued (not just stashed), so back-to-back requests don't clobber each
+     * other while ScpiLongTask is still working through an earlier one. */
     if (!led_bench_request_start((int)n)) {
         SCPI_ErrorPush(ctx, SCPI_ERROR_QUEUE_OVERFLOW);
         return SCPI_RES_ERR;
@@ -249,5 +249,5 @@ static const scpi_command_t s_scpi_commands[] = {
 
 void scpi_commands_register(void)
 {
-    scpi_server_init(s_scpi_commands, "Company", "CableTester", "SN001", "FW1.0");
+    scpi_short_task_init(s_scpi_commands, "Company", "CableTester", "SN001", "FW1.0");
 }

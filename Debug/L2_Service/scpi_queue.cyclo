@@ -1,0 +1,3 @@
+../L2_Service/scpi_queue.c:8:6:scpi_queue_init	1
+../L2_Service/scpi_queue.c:14:6:scpi_queue_register_tx_wake	1
+../L2_Service/scpi_queue.c:19:6:scpi_queue_notify_tx	2

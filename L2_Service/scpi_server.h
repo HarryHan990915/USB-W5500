@@ -1,10 +1,13 @@
 #ifndef L2_SERVICE_SCPI_SERVER_H
 #define L2_SERVICE_SCPI_SERVER_H
 
-#include "scpi/types.h"
-
-void scpi_server_init(const scpi_command_t *commands,
-                       const char *idn1, const char *idn2, const char *idn3, const char *idn4);
+/* NetTask-side only: owns the SCPI TCP socket's lifecycle (listen/accept/
+ * close) and moves raw bytes between the socket and scpi_rx_queue/
+ * scpi_tx_queue. Does not parse SCPI or know command syntax — see
+ * scpi_short_task.h for that, and openspec/changes/nettask-scpi-task-split
+ * for the full split rationale. Call scpi_server_poll() from NetTask's loop;
+ * nothing to initialize on this side (no per-connection state lives here
+ * anymore), so there is no scpi_server_init(). */
 void scpi_server_poll(void);
 
 #endif

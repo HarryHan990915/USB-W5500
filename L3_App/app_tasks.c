@@ -2,6 +2,7 @@
 #include "diag_service.h"
 #include "net_service.h"
 #include "scpi_server.h"
+#include "scpi_short_task.h"
 #include "led_bench.h"
 #include "cmsis_os.h"
 #include <stdio.h>
@@ -9,13 +10,17 @@
 
 /* Task handles created in main.c (CubeMX-generated osThreadNew calls). */
 extern osThreadId_t NetTaskHandle;
-extern osThreadId_t ScpiTaskHandle;
+extern osThreadId_t ScpiShortTaskHandle;
+extern osThreadId_t ScpiLongTaskHandle;
 extern osThreadId_t HousekeepTaskHandle;
 
 #define NET_WAKE_FLAG 0x1U
 
-/* Counts *why* app_net_task woke each cycle — real EXTI-driven wake vs. the
- * 2ms timeout firing with nothing to do. Read (non-atomically) from
+/* Counts *why* app_net_task woke each cycle — real event-driven wake (either
+ * the W5500 INT EXTI, or ScpiShortTask signaling a reply is ready on
+ * scpi_tx_queue — both call app_net_wake_from_isr(), so this counter no
+ * longer distinguishes the two, just "woken for a reason" vs. "the 5s
+ * timeout fired with nothing to do". Read (non-atomically) from
  * HousekeepTask in report_stack()'s neighborhood below; a torn read of a
  * free-running counter is an acceptable diagnostic-only tradeoff, same as
  * the STACK watermarks already logged there. */
@@ -26,10 +31,12 @@ void app_net_task(void *argument)
 {
     (void)argument;
     for (;;) {
-        /* Primarily woken by the W5500 INT EXTI via app_net_wake_from_isr()
-         * now — actual data/connection events (DHCP packets, SCPI traffic)
-         * all raise that interrupt and get handled immediately, no polling
-         * needed for them.
+        /* Primarily woken via app_net_wake_from_isr() now, from two sources:
+         * the W5500 INT EXTI (data/connection events on any socket NetTask
+         * owns get handled immediately), and ScpiShortTask after it queues a
+         * reply onto scpi_tx_queue (so replies go out promptly instead of
+         * waiting on the periodic timeout below) — see
+         * scpi_queue_register_tx_wake() in app_main.c.
          *
          * The 5 s timeout is NOT a "missed interrupt" safety net — it's load
          * bearing for two things the W5500 has no interrupt source for at
@@ -61,15 +68,23 @@ void app_net_wake_from_isr(void)
     osThreadFlagsSet(NetTaskHandle, NET_WAKE_FLAG);
 }
 
-void app_scpi_task(void *argument)
+void app_scpi_short_task(void *argument)
 {
     (void)argument;
-    /* SCPI command parsing/dispatch still runs inline inside
-     * scpi_server_poll() (called from NetTask) — this task isn't a general
-     * command-queue consumer. It's specifically where long-running work
-     * (started by a NetTask SCPI handler, like TEST:LED:BLINk) actually
-     * executes, so NetTask never blocks on it and progress can still be
-     * polled (TEST:LED:STATus?) while it's running. */
+    /* scpi_short_task_run() is itself an infinite loop (blocks on
+     * scpi_rx_queue, parses, dispatches) — no outer for(;;) needed here. */
+    scpi_short_task_run();
+}
+
+void app_scpi_long_task(void *argument)
+{
+    (void)argument;
+    /* This is where long-running SCPI command work (started by a
+     * ScpiShortTask command handler, like TEST:LED:BLINk) actually executes,
+     * so neither NetTask nor ScpiShortTask ever blocks on it and progress can
+     * still be polled (TEST:LED:STATus?) while it's running. Renamed from
+     * app_scpi_task: it never parsed SCPI, it only ever ran led_bench_run()
+     * — see openspec/changes/nettask-scpi-task-split. */
     for (;;) {
         led_bench_run();
     }
@@ -107,7 +122,8 @@ void app_housekeep_task(void *argument)
         if (++tick >= 10) { /* stack watermarks every ~10s, not every tick */
             tick = 0;
             report_stack("Net", NetTaskHandle);
-            report_stack("Scpi", ScpiTaskHandle);
+            report_stack("ScpiShort", ScpiShortTaskHandle);
+            report_stack("ScpiLong", ScpiLongTaskHandle);
             report_stack("Housekeep", HousekeepTaskHandle);
 
             char wake_buf[64];
