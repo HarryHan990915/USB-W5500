@@ -12,5 +12,5 @@
 ../L2_Service/net_service.c:114:13:fall_back_to_static_ip	1
 ../L2_Service/net_service.c:124:13:poll_wait_link	2
 ../L2_Service/net_service.c:131:13:poll_dhcp_running	6
-../L2_Service/net_service.c:158:13:poll_serving	2
-../L2_Service/net_service.c:166:6:net_service_poll	5
+../L2_Service/net_service.c:165:13:poll_serving	2
+../L2_Service/net_service.c:173:6:net_service_poll	5

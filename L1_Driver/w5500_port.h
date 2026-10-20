@@ -36,6 +36,15 @@ void w5500_get_mac(uint8_t mac[6]);
  *          the socket as gone). */
 int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap);
 
+/* Clears all latched Sn_IR bits for one socket. Per the W5500 datasheet these
+ * bits stay set until software writes 1 to clear them, and INTn is a single
+ * level-ORed line across all 8 sockets — so one socket's un-cleared bit holds
+ * the shared pin asserted forever and blocks every other socket's future
+ * falling edges too, not just its own. Sockets whose traffic isn't already
+ * funneled through w5500_hardened_recv() (e.g. the DHCP socket, driven
+ * directly by ioLibrary's DHCP_run()) need this called explicitly. */
+void w5500_clear_socket_ir(uint8_t sn);
+
 /* Registers a callback invoked from the W5500 INT EXTI ISR (falling edge).
  * Kept as a plain function pointer (no RTOS type in this HAL-only layer) so
  * L2_Service can wire it to a task wake without L1_Driver depending on

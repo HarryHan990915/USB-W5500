@@ -144,6 +144,13 @@ static void poll_dhcp_running(void)
     }
 
     uint8_t ret = DHCP_run();
+    /* DHCP_run() drives socket 0 directly via ioLibrary and never clears its
+     * Sn_IR, unlike w5500_hardened_recv() which does this for the SCPI
+     * socket — without it, the first DHCP packet latches socket 0's Sn_IR
+     * and keeps the shared INTn pin asserted forever, silently blocking the
+     * EXTI wake for every socket from then on (see w5500_clear_socket_ir doc
+     * comment). */
+    w5500_clear_socket_ir(DHCP_SOCKET);
     if (ret == DHCP_IP_LEASED) {
         uint8_t ip[4];
         getIPfromDHCP(ip);

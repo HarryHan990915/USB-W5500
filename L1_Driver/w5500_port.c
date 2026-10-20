@@ -233,6 +233,11 @@ int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
     return (int32_t)len;
 }
 
+void w5500_clear_socket_ir(uint8_t sn)
+{
+    setSn_IR(sn, 0xFF);
+}
+
 static w5500_int_cb_t s_int_cb = 0;
 
 void w5500_port_set_int_callback(w5500_int_cb_t cb)
@@ -241,8 +246,16 @@ void w5500_port_set_int_callback(w5500_int_cb_t cb)
 }
 
 /* W5500_INT_N_Pin (PA9 / Nucleo D8) is falling-edge EXTI, shared EXTI4_15_IRQHandler ->
- * HAL_GPIO_EXTI_IRQHandler -> this weak HAL callback. */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+ * HAL_GPIO_EXTI_IRQHandler -> this weak HAL callback.
+ *
+ * NOTE: this HAL version (STM32CubeG0 FW V1.6.3) split the old single
+ * HAL_GPIO_EXTI_Callback() into HAL_GPIO_EXTI_Rising_Callback() /
+ * HAL_GPIO_EXTI_Falling_Callback() (see HAL_GPIO_EXTI_IRQHandler in
+ * stm32g0xx_hal_gpio.c) — HAL_GPIO_EXTI_Callback() no longer exists and is
+ * never invoked, so defining it here silently never ran. Since
+ * W5500_INT_N_Pin is configured GPIO_MODE_IT_FALLING only, the falling-edge
+ * variant is the one that actually gets called. */
+void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == W5500_INT_N_Pin && s_int_cb != 0) {
         s_int_cb();
