@@ -87,6 +87,15 @@ static void slot_poll(scpi_slot_t *slot)
     default:
         break;
     }
+
+    /* CON/DISCON are never cleared anywhere else on this socket's normal
+     * path, which would otherwise latch the shared INTn pin low for the rest
+     * of the connection (see w5500_clear_socket_con_discon_ir doc comment).
+     * Deliberately NOT the blanket w5500_clear_socket_ir() here — this
+     * socket's replies go through ioLibrary's send(), which keeps its own
+     * cross-call state in Sn_IR_SENDOK and breaks (silently drops every
+     * reply after the first) if that bit gets wiped out from under it. */
+    w5500_clear_socket_con_discon_ir(slot->sock_no);
 }
 
 void scpi_server_poll(void)

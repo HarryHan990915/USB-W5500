@@ -42,8 +42,28 @@ int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap);
  * the shared pin asserted forever and blocks every other socket's future
  * falling edges too, not just its own. Sockets whose traffic isn't already
  * funneled through w5500_hardened_recv() (e.g. the DHCP socket, driven
- * directly by ioLibrary's DHCP_run()) need this called explicitly. */
+ * directly by ioLibrary's DHCP_run()) need this called explicitly.
+ *
+ * DO NOT call this on a socket that uses ioLibrary's send(): send() keeps
+ * its own cross-call state in Sn_IR_SENDOK (see socket.c's sock_is_sending
+ * bitmask) to know whether the previous transmit actually completed, and a
+ * blanket 0xFF clear here wipes that out from under it — every send() call
+ * after the first then falls into send()'s "else return SOCK_BUSY" path
+ * forever (until the socket is closed/reopened, which resets the bitmask),
+ * silently dropping replies while look like nothing is wrong on the receive
+ * side. Use w5500_clear_socket_con_discon_ir() instead for TCP sockets. */
 void w5500_clear_socket_ir(uint8_t sn);
+
+/* Clears only Sn_IR_CON and Sn_IR_DISCON — the two bits nothing else in this
+ * codebase ever clears for a TCP socket (w5500_hardened_recv() clears RECV;
+ * ioLibrary's send()/disconnect() manage SENDOK/TIMEOUT themselves). Without
+ * this, the first CON event latches the shared INTn pin low for the rest of
+ * that connection's lifetime, and every later RECV on it still sets its bit
+ * internally but can't produce a new falling edge since the pin never went
+ * high in between — NetTask silently stops being interrupt-woken for that
+ * socket after the first event. Safe to call unconditionally every poll,
+ * unlike w5500_clear_socket_ir() above. */
+void w5500_clear_socket_con_discon_ir(uint8_t sn);
 
 /* Registers a callback invoked from the W5500 INT EXTI ISR (falling edge).
  * Kept as a plain function pointer (no RTOS type in this HAL-only layer) so

@@ -13,5 +13,6 @@
 ../L1_Driver/w5500_port.c:155:6:w5500_set_static_ip	56	static
 ../L1_Driver/w5500_port.c:170:9:w5500_hardened_recv	64	static
 ../L1_Driver/w5500_port.c:236:6:w5500_clear_socket_ir	16	static
-../L1_Driver/w5500_port.c:243:6:w5500_port_set_int_callback	16	static
-../L1_Driver/w5500_port.c:258:6:HAL_GPIO_EXTI_Falling_Callback	16	static
+../L1_Driver/w5500_port.c:241:6:w5500_clear_socket_con_discon_ir	16	static
+../L1_Driver/w5500_port.c:248:6:w5500_port_set_int_callback	16	static
+../L1_Driver/w5500_port.c:263:6:HAL_GPIO_EXTI_Falling_Callback	16	static

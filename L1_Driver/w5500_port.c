@@ -238,6 +238,11 @@ void w5500_clear_socket_ir(uint8_t sn)
     setSn_IR(sn, 0xFF);
 }
 
+void w5500_clear_socket_con_discon_ir(uint8_t sn)
+{
+    setSn_IR(sn, Sn_IR_CON | Sn_IR_DISCON);
+}
+
 static w5500_int_cb_t s_int_cb = 0;
 
 void w5500_port_set_int_callback(w5500_int_cb_t cb)

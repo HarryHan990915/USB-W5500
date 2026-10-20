@@ -26,13 +26,24 @@ void app_net_task(void *argument)
 {
     (void)argument;
     for (;;) {
-        /* Woken early by the W5500 INT EXTI via app_net_wake_from_isr(), or
-         * by this 2 ms timeout either way — same polling cadence proven
-         * stable in the bare-metal version, now running in task context
-         * instead of the main-loop busy-check. The timeout is kept as a
-         * safety net: if the EXTI wake is ever missed (e.g. two interrupts
-         * coalesce before NetTask runs), the task still makes progress. */
-        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 2);
+        /* Primarily woken by the W5500 INT EXTI via app_net_wake_from_isr()
+         * now — actual data/connection events (DHCP packets, SCPI traffic)
+         * all raise that interrupt and get handled immediately, no polling
+         * needed for them.
+         *
+         * The 1 s timeout is NOT a "missed interrupt" safety net — it's load
+         * bearing for two things the W5500 has no interrupt source for at
+         * all: PHYCFGR's link-up/link-down bit is a plain status bit with no
+         * associated IR event (see w5500.h's IR_* defines — only CONFLICT/
+         * UNREACH/PPPoE/MP exist at chip level, nothing for PHY link
+         * change), so link_up_debounced() can only ever learn the link came
+         * up by being polled; and DHCP_time_handler()'s retransmit timer is
+         * time-driven, not event-driven, and needs a roughly-once-per-second
+         * call regardless of socket traffic. Without this periodic wake,
+         * NetTask would block forever on osWaitForever right out of reset
+         * (nothing has happened on any socket yet to raise an interrupt),
+         * and DHCP would never even start. */
+        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 1000);
         if (flags == osFlagsErrorTimeout) {
             s_net_timeout_wakes++;
         } else if ((flags & osFlagsError) == 0) {
