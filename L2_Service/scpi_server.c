@@ -30,7 +30,23 @@ static size_t scpi_write_cb(scpi_t *context, const char *data, size_t len)
     scpi_slot_t *slot = (scpi_slot_t *)context->user_context;
     int32_t sent = send(slot->sock_no, (uint8_t *)data, (uint16_t)len);
     diag_latency_mark_end();
-    return (sent > 0) ? (size_t)sent : 0;
+    if (sent <= 0) {
+        /* ioLibrary's send() keeps its own cross-call "is the previous
+         * transmit confirmed yet" state (sock_is_sending, private static in
+         * socket.c) gated on correctly reading Sn_IR_SENDOK back over SPI.
+         * A single misread on this board's noisy bus (same class of issue
+         * w5500_hardened_recv() already works around for the receive side)
+         * can leave that state wedged, and every send() call after that
+         * returns SOCK_BUSY forever — we have no way to reset it directly
+         * since it's private to socket.c. close() does reset it as a side
+         * effect of tearing the socket down, though, so force that here:
+         * this one bad reply costs the current connection (client has to
+         * reconnect), not every reply from then on. slot_poll()'s next
+         * iteration sees SOCK_CLOSED and re-listens for a fresh client. */
+        close(slot->sock_no);
+        return 0;
+    }
+    return (size_t)sent;
 }
 
 void scpi_server_init(const scpi_command_t *commands,

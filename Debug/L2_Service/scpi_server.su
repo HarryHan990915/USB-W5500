@@ -1,4 +1,4 @@
 ../L2_Service/scpi_server.c:28:15:scpi_write_cb	32	static
-../L2_Service/scpi_server.c:36:6:scpi_server_init	80	static
-../L2_Service/scpi_server.c:54:13:slot_poll	32	static
-../L2_Service/scpi_server.c:101:6:scpi_server_poll	16	static
+../L2_Service/scpi_server.c:52:6:scpi_server_init	80	static
+../L2_Service/scpi_server.c:70:13:slot_poll	32	static
+../L2_Service/scpi_server.c:117:6:scpi_server_poll	16	static
