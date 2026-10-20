@@ -1,6 +1,6 @@
-../L3_App/app_tasks.c:30:6:app_net_task	3
-../L3_App/app_tasks.c:66:6:app_net_wake_from_isr	1
-../L3_App/app_tasks.c:71:6:app_scpi_short_task	1
-../L3_App/app_tasks.c:79:6:app_scpi_long_task	1
-../L3_App/app_tasks.c:93:13:report_stack	2
-../L3_App/app_tasks.c:103:6:app_housekeep_task	5
+../L3_App/app_tasks.c:31:6:app_net_task	3
+../L3_App/app_tasks.c:68:6:app_net_wake_from_isr	1
+../L3_App/app_tasks.c:73:6:app_scpi_short_task	1
+../L3_App/app_tasks.c:81:6:app_scpi_long_task	1
+../L3_App/app_tasks.c:95:13:report_stack	2
+../L3_App/app_tasks.c:105:6:app_housekeep_task	5

@@ -92,7 +92,7 @@ static void drain_tx_queue(void)
     }
 }
 
-void scpi_server_poll(void)
+void scpi_socket_poll(void)
 {
     /* Drained unconditionally, even if the link just dropped and
      * net_service_is_serving() is about to go false: this both transmits

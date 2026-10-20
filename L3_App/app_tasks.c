@@ -3,6 +3,7 @@
 #include "net_service.h"
 #include "scpi_server.h"
 #include "scpi_short_task.h"
+#include "telnet_server.h"
 #include "led_bench.h"
 #include "cmsis_os.h"
 #include <stdio.h>
@@ -59,7 +60,8 @@ void app_net_task(void *argument)
             s_net_isr_wakes++;
         }
         net_service_poll();
-        scpi_server_poll();
+        scpi_socket_poll();
+        telnet_socket_poll();
     }
 }
 

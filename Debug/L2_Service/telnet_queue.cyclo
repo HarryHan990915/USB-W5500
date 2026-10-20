@@ -1,0 +1,4 @@
+../L2_Service/telnet_queue.c:9:6:telnet_queue_init	1
+../L2_Service/telnet_queue.c:15:6:telnet_queue_push	4
+../L2_Service/telnet_queue.c:34:6:telnet_queue_register_tx_wake	1
+../L2_Service/telnet_queue.c:39:6:telnet_queue_notify_tx	2

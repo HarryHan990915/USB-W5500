@@ -3,6 +3,7 @@
 #include "net_service.h"
 #include "scpi_commands.h"
 #include "scpi_queue.h"
+#include "telnet_queue.h"
 #include "config_service.h"
 #include "test_led.h"
 #include "led_bench.h"
@@ -16,6 +17,7 @@ void app_init(void)
     test_led_init();
     led_bench_init();
     scpi_queue_init();
+    telnet_queue_init();
     config_service_load_and_apply();
     net_service_init();
     net_service_register_int_wake(app_net_wake_from_isr);
@@ -24,5 +26,8 @@ void app_init(void)
      * out its periodic link-check timeout to notice (see
      * openspec/changes/nettask-scpi-task-split). */
     scpi_queue_register_tx_wake(app_net_wake_from_isr);
+    /* Same pattern for telnet's log mirror: wake NetTask the instant a log
+     * line is queued instead of waiting on its periodic timeout. */
+    telnet_queue_register_tx_wake(app_net_wake_from_isr);
     scpi_commands_register();
 }

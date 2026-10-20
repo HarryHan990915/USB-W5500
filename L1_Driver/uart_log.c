@@ -3,7 +3,17 @@
 
 extern UART_HandleTypeDef huart2;
 
+static uart_log_tap_t s_tap = 0;
+
 void uart_log_write(const char *msg, uint16_t len)
 {
     HAL_UART_Transmit(&huart2, (const uint8_t *)msg, len, HAL_MAX_DELAY);
+    if (s_tap != 0) {
+        s_tap(msg, len);
+    }
+}
+
+void uart_log_set_tap(uart_log_tap_t tap)
+{
+    s_tap = tap;
 }
