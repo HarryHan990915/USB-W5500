@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "app_main.h"
 #include "app_tasks.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -180,6 +181,32 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   MX_IWDG_Init();
+
+  /* Diagnostic: log *why* the MCU just reset, before anything has a chance
+   * to clear it. RCC_CSR's reset-cause flags are sticky across resets until
+   * software explicitly clears them, so without this every reboot looks
+   * identical in the log no matter what caused it. Calling HAL_UART_Transmit
+   * directly (not uart_log_write()): this source folder's build config has
+   * no L1_Driver include path (by design — see app_iwdg_refresh()/
+   * app_read_w5500_int_pin() below for the established pattern of keeping
+   * L1_Driver headers out of here), and huart2 is already this file's own
+   * handle. */
+  {
+      char reset_buf[112];
+      int reset_n = snprintf(reset_buf, sizeof(reset_buf),
+          "RESET CAUSE: PWR=%d PIN=%d IWDG=%d WWDG=%d SFT=%d LPWR=%d OBL=%d\r\n",
+          __HAL_RCC_GET_FLAG(RCC_FLAG_PWRRST)  ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)  ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST) ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)  ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST) ? 1 : 0,
+          __HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)  ? 1 : 0);
+      if (reset_n > 0) {
+          HAL_UART_Transmit(&huart2, (uint8_t *)reset_buf, (uint16_t)reset_n, HAL_MAX_DELAY);
+      }
+      __HAL_RCC_CLEAR_RESET_FLAGS();
+  }
   /* USER CODE END 2 */
 
   /* Init scheduler */

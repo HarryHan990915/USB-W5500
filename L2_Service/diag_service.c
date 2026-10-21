@@ -65,6 +65,25 @@ int diag_run_full_selftest(void)
     return (st == DRV_OK) ? 0 : 1;
 }
 
+void diag_log_buffer_stats(void)
+{
+    uint16_t tx_fsr, rx_rsr;
+    char buf[96];
+    int n;
+
+    w5500_get_buffer_state(1, &tx_fsr, &rx_rsr);
+    n = snprintf(buf, sizeof(buf), "BUF sock1(SCPI): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
+    if (n > 0) { uart_log_write(buf, (uint16_t)n); }
+
+    w5500_get_buffer_state(2, &tx_fsr, &rx_rsr);
+    n = snprintf(buf, sizeof(buf), "BUF sock2(Telnet): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
+    if (n > 0) { uart_log_write(buf, (uint16_t)n); }
+
+    w5500_get_buffer_state(3, &tx_fsr, &rx_rsr);
+    n = snprintf(buf, sizeof(buf), "BUF sock3(HTTP): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
+    if (n > 0) { uart_log_write(buf, (uint16_t)n); }
+}
+
 void diag_log_scpi_recv_stats(void)
 {
     /* Socket 1 mirrors scpi_server.c's SCPI_FIRST_SOCKET (socket 0 is

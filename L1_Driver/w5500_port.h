@@ -66,13 +66,29 @@ void w5500_clear_socket_ir(uint8_t sn);
  * that connection's lifetime, and every later RECV on it still sets its bit
  * internally but can't produce a new falling edge since the pin never went
  * high in between — NetTask silently stops being interrupt-woken for that
- * socket after the first event. Safe to call unconditionally every poll,
- * unlike w5500_clear_socket_ir() above. */
+ * socket after the first event. Safe to call unconditionally every poll
+ * (unlike w5500_clear_socket_ir() above), but don't: these bits can only ever
+ * be set right when a socket transitions to SOCK_ESTABLISHED (CON) or
+ * SOCK_CLOSE_WAIT (DISCON), so calling this on every other poll tick — most
+ * of a mostly-idle socket's life, e.g. while sitting in SOCK_LISTEN with
+ * nobody connected — is a pure no-op SPI write repeated forever. Call it only
+ * from those two transition points (see scpi_server.c/telnet_server.c/
+ * http_server.c's socket_poll() for the pattern); doing it unconditionally
+ * everywhere was adding enough constant low-level SPI bus traffic, across all
+ * three protocol sockets, to be the actual cause of this board's mystery MCU
+ * resets on its electrically marginal jump-wired link. */
 void w5500_clear_socket_con_discon_ir(uint8_t sn);
 
 /* Raw read of Sn_IR for diagnostics — e.g. logging whether it's stuck
  * asserted (non-zero) when nothing should currently be pending. */
 uint8_t w5500_get_socket_ir(uint8_t sn);
+
+/* Raw read of a socket's free TX space / available RX bytes — each maxes out
+ * at 2048 (this project's per-socket buffer allocation). A value outside
+ * [0, 2048], or one stuck unchanging across repeated calls on an active
+ * connection, points at corrupted buffer-pointer state (e.g. from a bad SPI
+ * transaction) rather than normal traffic. */
+void w5500_get_buffer_state(uint8_t sn, uint16_t *tx_fsr, uint16_t *rx_rsr);
 
 /* Running counts of which path w5500_hardened_recv() took, since boot.
  * vote_fail/rsr_disagree/cr_timeout are the three "gave up, didn't touch

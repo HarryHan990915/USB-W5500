@@ -107,9 +107,14 @@ static void start_dhcp(void)
     enter_state(NET_DHCP_RUNNING);
 }
 
-static uint8_t s_static_ip[4] = {192, 168, 2, 200};
+static uint8_t s_static_ip[4] = {192, 168, 2, 131};
 static uint8_t s_static_sn[4] = {255, 255, 255, 0};
 static uint8_t s_static_gw[4] = {192, 168, 2, 1};
+/* DHCP-first, static-as-fallback until config_service_load_and_apply() wires
+ * in the flash-configured value (defaults to disabled, see
+ * flash_store_defaults()) — see net_service_set_dhcp_enabled() doc comment
+ * in net_service.h. */
+static int s_dhcp_enabled = 1;
 
 void net_service_set_static_fallback(const uint8_t ip[4], const uint8_t sn[4], const uint8_t gw[4])
 {
@@ -118,20 +123,36 @@ void net_service_set_static_fallback(const uint8_t ip[4], const uint8_t sn[4], c
     memcpy(s_static_gw, gw, 4);
 }
 
-static void fall_back_to_static_ip(void)
+void net_service_set_dhcp_enabled(int enabled)
 {
-    DHCP_stop();
-    log_line("NET: DHCP failed/timeout, falling back to static IP\r\n");
+    s_dhcp_enabled = enabled ? 1 : 0;
+}
+
+static void apply_static_ip(void)
+{
     w5500_set_static_ip(s_static_ip, s_static_sn, s_static_gw);
     log_ip("NET: static IP", s_static_ip);
     enter_state(NET_STATIC_FALLBACK);
     enter_state(NET_SERVING);
 }
 
+static void fall_back_to_static_ip(void)
+{
+    DHCP_stop();
+    log_line("NET: DHCP failed/timeout, falling back to static IP\r\n");
+    apply_static_ip();
+}
+
 static void poll_wait_link(void)
 {
-    if (link_up_debounced()) {
+    if (!link_up_debounced()) {
+        return;
+    }
+    if (s_dhcp_enabled) {
         start_dhcp();
+    } else {
+        log_line("NET: DHCP disabled, using static IP\r\n");
+        apply_static_ip();
     }
 }
 

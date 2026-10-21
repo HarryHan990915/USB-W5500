@@ -3,6 +3,7 @@
 #include "w5500_port.h"
 #include "http_queue.h"
 #include "sys_time.h"
+#include "diag_service.h"
 #include "socket.h"
 #include "cmsis_os.h"
 #include <string.h>
@@ -36,6 +37,17 @@ static void socket_poll(uint8_t sock_no)
     }
     case SOCK_CLOSE_WAIT:
         disconnect(sock_no);
+        /* CON/DISCON latch fix (see w5500_clear_socket_con_discon_ir's doc
+         * comment) — only called here and in the SOCK_ESTABLISHED case below,
+         * the only two transitions that can ever set CON/DISCON. Clearing
+         * unconditionally every poll (the original approach) meant a pointless
+         * extra SPI write every single cycle this socket spent idle in
+         * SOCK_LISTEN waiting for a request — which, combined with telnet's
+         * socket doing the same thing, was adding a lot of continuous SPI bus
+         * traffic on an electrically marginal jump-wired link. Confirmed as
+         * the actual cause of this board's mystery MCU resets by disabling
+         * telnet/http polling entirely and seeing resets all but disappear. */
+        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     case SOCK_ESTABLISHED: {
         static uint8_t buf[HTTP_QUEUE_MSG_LEN];
@@ -47,13 +59,14 @@ static void socket_poll(uint8_t sock_no)
             memcpy(msg.data, buf, (size_t)n);
             (void)osMessageQueuePut(http_rx_queueHandle, &msg, 0, 50);
         }
+        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     }
     default:
+        /* SOCK_LISTEN (the normal idle-waiting state) or a transient status —
+         * nothing to clear, see above. */
         break;
     }
-
-    w5500_clear_socket_con_discon_ir(sock_no);
 }
 
 static void drain_tx_queue(void)
@@ -68,6 +81,20 @@ static void drain_tx_queue(void)
 
     http_queue_msg_t msg;
     if (osMessageQueueGet(http_tx_queueHandle, &msg, NULL, 0) == osOK) {
+        if (getSn_TX_FSR(msg.sock_no) < msg.len) {
+            /* Vendored send()'s internal "wait for TX room" loop
+             * (ThirdParty/ioLibrary_Driver/Ethernet/socket.c) has no
+             * timeout at all — if the TX buffer can't free up fast enough
+             * (stalled browser, or the link drops a few ACKs on this
+             * jump-wired board) that loop spins NetTask forever, starving
+             * HousekeepTask's IWDG refresh and resetting the board ~4s
+             * later. Give up on this reply (HTTP has no retry path once
+             * the client's gone quiet) instead of ever calling send()
+             * without guaranteed room. */
+            diag_log("CLOSING sock3(HTTP) tx full\r\n");
+            close(msg.sock_no);
+            return;
+        }
         send(msg.sock_no, msg.data, msg.len);
         s_awaiting_sendok = 1;
         s_sendok_deadline_ms = sys_tick_ms() + HTTP_SENDOK_TIMEOUT_MS;
@@ -97,6 +124,7 @@ static void check_sendok(uint8_t sock_no)
     }
     if ((getSn_IR(sock_no) & Sn_IR_SENDOK) ||
         (int32_t)(sys_tick_ms() - s_sendok_deadline_ms) >= 0) {
+        diag_log("CLOSING sock3(HTTP)\r\n");  // temporary debug breadcrumb
         close(sock_no);
         s_awaiting_sendok = 0;
     }

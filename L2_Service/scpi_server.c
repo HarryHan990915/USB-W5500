@@ -2,6 +2,7 @@
 #include "net_service.h"
 #include "w5500_port.h"
 #include "scpi_queue.h"
+#include "diag_service.h"
 #include "socket.h"
 #include "cmsis_os.h"
 #include <string.h>
@@ -34,6 +35,22 @@ static void socket_poll(uint8_t sock_no)
     }
     case SOCK_CLOSE_WAIT:
         disconnect(sock_no);
+        /* CON/DISCON are never cleared anywhere else on this socket's normal
+         * path, which would otherwise latch the shared INTn pin low for the
+         * rest of the connection (see w5500_clear_socket_con_discon_ir doc
+         * comment). Deliberately NOT the blanket w5500_clear_socket_ir() here
+         * — this socket's replies go through ioLibrary's send(), which keeps
+         * its own cross-call state in Sn_IR_SENDOK and breaks (silently drops
+         * every reply after the first) if that bit gets wiped out from under
+         * it. Only called here and in the SOCK_ESTABLISHED case below — the
+         * only two transitions that can ever set CON/DISCON — not
+         * unconditionally every poll: clearing on every tick while idly
+         * sitting in SOCK_LISTEN with nobody connected was a pointless extra
+         * SPI write repeated forever, and across all three protocol sockets
+         * that constant low-level SPI chatter turned out to be the actual
+         * cause of this board's mystery MCU resets (confirmed by disabling
+         * telnet/http polling and seeing resets all but disappear). */
+        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     case SOCK_ESTABLISHED: {
         static uint8_t buf[SCPI_QUEUE_MSG_LEN];
@@ -54,39 +71,66 @@ static void socket_poll(uint8_t sock_no)
              * waits. */
             (void)osMessageQueuePut(scpi_rx_queueHandle, &msg, 0, 50);
         }
+        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     }
     default:
+        /* SOCK_LISTEN (the normal idle-waiting state) or a transient status —
+         * nothing to clear, see above. */
         break;
     }
-
-    /* CON/DISCON are never cleared anywhere else on this socket's normal
-     * path, which would otherwise latch the shared INTn pin low for the rest
-     * of the connection (see w5500_clear_socket_con_discon_ir doc comment).
-     * Deliberately NOT the blanket w5500_clear_socket_ir() here — this
-     * socket's replies go through ioLibrary's send(), which keeps its own
-     * cross-call state in Sn_IR_SENDOK and breaks (silently drops every
-     * reply after the first) if that bit gets wiped out from under it. */
-    w5500_clear_socket_con_discon_ir(sock_no);
 }
 
 static void drain_tx_queue(void)
 {
     scpi_queue_msg_t msg;
     while (osMessageQueueGet(scpi_tx_queueHandle, &msg, NULL, 0) == osOK) {
+        if (getSn_TX_FSR(msg.sock_no) < msg.len) {
+            /* Vendored send()'s internal "wait for TX room" loop
+             * (ThirdParty/ioLibrary_Driver/Ethernet/socket.c) has no
+             * timeout at all — if the TX buffer can't free up fast enough
+             * (client stopped reading, or the link drops a few ACKs on
+             * this jump-wired board) that loop spins NetTask forever,
+             * starving HousekeepTask's IWDG refresh and resetting the
+             * board ~4s later. Re-queue and retry next poll instead of
+             * ever calling send() without guaranteed room. */
+            (void)osMessageQueuePut(scpi_tx_queueHandle, &msg, 0, 0);
+            break;
+        }
         int32_t sent = send(msg.sock_no, msg.data, msg.len);
-        if (sent <= 0) {
-            /* ioLibrary's send() keeps its own cross-call "is the previous
-             * transmit confirmed yet" state (sock_is_sending, private static
-             * in socket.c) gated on correctly reading Sn_IR_SENDOK back over
-             * SPI. A single misread on this board's noisy bus can leave that
-             * state wedged, and every send() call after that returns
-             * SOCK_BUSY forever — we have no way to reset it directly since
-             * it's private to socket.c. close() does reset it as a side
-             * effect of tearing the socket down, though, so force that here:
-             * this one bad reply costs the current connection (client has to
+        if (sent == 0) {
+            /* SOCK_BUSY, not a failure: ioLibrary's send() won't start a new
+             * transmit on this socket until the previous one's Sn_IR_SENDOK
+             * confirmation comes back from the peer (see socket.c's
+             * sock_is_sending bookkeeping) — a real TCP round trip, so it
+             * can never have arrived yet if this is the 2nd+ message drained
+             * out of scpi_tx_queue in the same pass (e.g. a client that
+             * fired off several SCPI queries back-to-back, queuing several
+             * replies before NetTask got a chance to drain any of them).
+             * Treating this the same as a real send failure was
+             * force-closing a perfectly healthy connection on nothing more
+             * than "two replies queued up at once". Put it back and stop
+             * draining this round instead — the rest of the queue gets
+             * force-closed along with it otherwise, since the socket's
+             * already SOCK_CLOSED by then. Next poll (or the SENDOK IRQ
+             * wake) retries once the previous send actually confirms. */
+            (void)osMessageQueuePut(scpi_tx_queueHandle, &msg, 0, 0);
+            break;
+        }
+        if (sent < 0) {
+            /* A real failure (SOCKERR_*), not SOCK_BUSY. ioLibrary's send()
+             * keeps its own cross-call "is the previous transmit confirmed
+             * yet" state (sock_is_sending, private static in socket.c) gated
+             * on correctly reading Sn_IR_SENDOK back over SPI. A single
+             * misread on this board's noisy bus can leave that state
+             * wedged, and every send() call after that returns an error
+             * forever — we have no way to reset it directly since it's
+             * private to socket.c. close() does reset it as a side effect of
+             * tearing the socket down, though, so force that here: this one
+             * bad reply costs the current connection (client has to
              * reconnect), not every reply from then on. socket_poll()'s next
              * iteration sees SOCK_CLOSED and re-listens for a fresh client. */
+            diag_log("CLOSING sock1(SCPI)\r\n");
             close(msg.sock_no);
         }
     }

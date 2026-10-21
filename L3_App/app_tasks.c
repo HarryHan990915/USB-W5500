@@ -69,7 +69,7 @@ void app_net_task(void *argument)
         }
         net_service_poll();
         scpi_socket_poll();
-        telnet_socket_poll();
+        // telnet_socket_poll();
         http_socket_poll();
     }
 }
@@ -165,6 +165,7 @@ void app_housekeep_task(void *argument)
                 diag_log(wake_buf);
             }
             diag_log_scpi_recv_stats();
+            diag_log_buffer_stats();
         }
 
         osDelay(1000);

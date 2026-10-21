@@ -1,2 +1,2 @@
 ../L2_Service/config_service.c:9:6:config_service_load_and_apply	2
-../L2_Service/config_service.c:19:6:config_service_save	2
+../L2_Service/config_service.c:20:6:config_service_save	2

@@ -1,4 +1,4 @@
-../L2_Service/telnet_server.c:8:13:drain_tx_queue	4
-../L2_Service/telnet_server.c:25:13:discard_rx	1
-../L2_Service/telnet_server.c:35:13:socket_poll	5
-../L2_Service/telnet_server.c:60:6:telnet_socket_poll	2
+../L2_Service/telnet_server.c:9:13:drain_tx_queue	6
+../L2_Service/telnet_server.c:49:13:discard_rx	1
+../L2_Service/telnet_server.c:59:13:socket_poll	5
+../L2_Service/telnet_server.c:96:6:telnet_socket_poll	2

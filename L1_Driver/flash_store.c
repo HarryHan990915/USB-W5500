@@ -25,13 +25,15 @@ void flash_store_defaults(flash_config_t *cfg)
 {
     memset(cfg, 0, sizeof(*cfg));
     cfg->magic = FLASH_STORE_MAGIC;
-    uint8_t ip[4] = {192, 168, 2, 200};
+    uint8_t ip[4] = {192, 168, 2, 131};
     uint8_t sn[4] = {255, 255, 255, 0};
     uint8_t gw[4] = {192, 168, 2, 1};
     memcpy(cfg->ip, ip, 4);
     memcpy(cfg->sn, sn, 4);
     memcpy(cfg->gw, gw, 4);
-    cfg->dhcp_enabled = 1;
+    /* Shipping product needs a predictable address, not whatever a DHCP
+     * server happens to hand out — see net_service.c's s_dhcp_enabled. */
+    cfg->dhcp_enabled = 0;
 }
 
 int flash_store_read(flash_config_t *cfg)

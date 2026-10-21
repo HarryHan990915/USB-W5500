@@ -1,4 +1,4 @@
 ../L1_Driver/flash_store.c:11:17:crc32_calc	32	static
 ../L1_Driver/flash_store.c:24:6:flash_store_defaults	40	static
-../L1_Driver/flash_store.c:37:5:flash_store_read	64	static
-../L1_Driver/flash_store.c:53:5:flash_store_write	112	static
+../L1_Driver/flash_store.c:39:5:flash_store_read	64	static
+../L1_Driver/flash_store.c:55:5:flash_store_write	112	static

@@ -14,6 +14,7 @@ void config_service_load_and_apply(void)
     uart_log_write(msg, (uint16_t)strlen(msg));
 
     net_service_set_static_fallback(s_cfg.ip, s_cfg.sn, s_cfg.gw);
+    net_service_set_dhcp_enabled(s_cfg.dhcp_enabled);
 }
 
 void config_service_save(void)

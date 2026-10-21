@@ -15,6 +15,8 @@ int diag_run_full_selftest(void);
  * climbing relative to success) versus something else. */
 void diag_log_scpi_recv_stats(void);
 
+void diag_log_buffer_stats(void);
+
 /* TIM2-backed microsecond latency instrumentation, backing DIAGnostic:LATency?.
  * mark_start/mark_end bracket one SCPI command's receive-to-reply-sent span. */
 void diag_latency_init(void);

@@ -281,6 +281,12 @@ void w5500_clear_socket_con_discon_ir(uint8_t sn)
     setSn_IR(sn, Sn_IR_CON | Sn_IR_DISCON);
 }
 
+void w5500_get_buffer_state(uint8_t sn, uint16_t *tx_fsr, uint16_t *rx_rsr)
+{
+    *tx_fsr = getSn_TX_FSR(sn);
+    *rx_rsr = getSn_RX_RSR(sn);
+}
+
 static w5500_int_cb_t s_int_cb = 0;
 
 void w5500_port_set_int_callback(w5500_int_cb_t cb)

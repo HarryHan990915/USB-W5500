@@ -17,5 +17,6 @@
 ../L1_Driver/w5500_port.c:204:9:w5500_hardened_recv	12
 ../L1_Driver/w5500_port.c:274:6:w5500_clear_socket_ir	1
 ../L1_Driver/w5500_port.c:279:6:w5500_clear_socket_con_discon_ir	1
-../L1_Driver/w5500_port.c:286:6:w5500_port_set_int_callback	1
-../L1_Driver/w5500_port.c:301:6:HAL_GPIO_EXTI_Falling_Callback	3
+../L1_Driver/w5500_port.c:284:6:w5500_get_buffer_state	1
+../L1_Driver/w5500_port.c:292:6:w5500_port_set_int_callback	1
+../L1_Driver/w5500_port.c:307:6:HAL_GPIO_EXTI_Falling_Callback	3

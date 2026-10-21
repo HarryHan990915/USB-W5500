@@ -12,7 +12,8 @@ L2_Service/http_server.o: ../L2_Service/http_server.c \
  C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
  C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
  C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
- ../L1_Driver/sys_time.h ../ThirdParty/ioLibrary_Driver/Ethernet/socket.h \
+ ../L1_Driver/sys_time.h ../L2_Service/diag_service.h \
+ ../ThirdParty/ioLibrary_Driver/Ethernet/socket.h \
  ../ThirdParty/ioLibrary_Driver/Ethernet/wizchip_conf.h \
  ../ThirdParty/ioLibrary_Driver/Ethernet/W5500/w5500.h \
  ../ThirdParty/ioLibrary_Driver/Ethernet/wizchip_conf.h
@@ -32,6 +33,7 @@ C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_
 C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_Party/FreeRTOS/Source/include/list.h:
 C:/Users/HarryHan/STM32Cube/Repository/STM32Cube_FW_G0_V1.6.3/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
 ../L1_Driver/sys_time.h:
+../L2_Service/diag_service.h:
 ../ThirdParty/ioLibrary_Driver/Ethernet/socket.h:
 ../ThirdParty/ioLibrary_Driver/Ethernet/wizchip_conf.h:
 ../ThirdParty/ioLibrary_Driver/Ethernet/W5500/w5500.h:
