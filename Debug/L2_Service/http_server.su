@@ -1,0 +1,4 @@
+../L2_Service/http_server.c:22:13:socket_poll	336	static
+../L2_Service/http_server.c:59:13:drain_tx_queue	312	static
+../L2_Service/http_server.c:93:13:check_sendok	16	static
+../L2_Service/http_server.c:105:6:http_socket_poll	16	static

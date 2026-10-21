@@ -55,7 +55,12 @@ osThreadId_t NetTaskHandle;
 const osThreadAttr_t NetTask_attributes = {
   .name = "NetTask",
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 256 * 4
+  /* Bumped from 256*4: this task was already down to 248 bytes free at the
+   * old size (see STACK Net: in diagnostic logs) before telnet_socket_poll()/
+   * http_socket_poll() added more locals to its call chain each poll cycle,
+   * which was overflowing it (see configCHECK_FOR_STACK_OVERFLOW's hook in
+   * app_freertos.c) and crash-looping the board before DHCP ever completed. */
+  .stack_size = 512 * 4
 };
 /* Definitions for ScpiLongTask (renamed from ScpiTask: it never parsed SCPI,
  * it only ever ran the long-running led_bench loop — see
@@ -90,6 +95,32 @@ const osThreadAttr_t HousekeepTask_attributes = {
  * markers to survive regeneration. If IWDG is ever added properly via the
  * .ioc, remove these in favor of the generated MX_IWDG_Init(). */
 IWDG_HandleTypeDef hiwdg;
+
+/* Not CubeMX-generated either, same reasoning: HttpTask isn't in the .ioc's
+ * FreeRTOS task list, so its handle/attributes/creation are hand-added inside
+ * USER CODE markers to survive regeneration instead of living in the
+ * generated block below with NetTask/ScpiShortTask/etc. app_http_task()
+ * itself (the actual thread body) lives in L3_App/app_tasks.c, same as every
+ * other task here — passed directly to osThreadNew() with no StartXxxTask
+ * wrapper since that indirection only exists for CubeMX's own generated
+ * threads. If HttpTask is ever added properly via the .ioc, remove this in
+ * favor of the generated definition. */
+osThreadId_t HttpTaskHandle;
+const osThreadAttr_t HttpTask_attributes = {
+  .name = "HttpTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 384 * 4
+};
+
+/* Same reasoning as HttpTask above: TelnetTask isn't in the .ioc either.
+ * Lower priority than HttpTask/ScpiShortTask — it's just forwarding log
+ * lines, nothing here is latency-sensitive the way a SCPI/HTTP reply is. */
+osThreadId_t TelnetTaskHandle;
+const osThreadAttr_t TelnetTask_attributes = {
+  .name = "TelnetTask",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256 * 4
+};
 
 /* USER CODE END PV */
 
@@ -187,7 +218,10 @@ int main(void)
   HousekeepTaskHandle = osThreadNew(StartHousekeepTask, NULL, &HousekeepTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  /* creation of HttpTask (hand-added, see note by HttpTaskHandle's declaration) */
+  HttpTaskHandle = osThreadNew(app_http_task, NULL, &HttpTask_attributes);
+  /* creation of TelnetTask (hand-added, same reasoning) */
+  TelnetTaskHandle = osThreadNew(app_telnet_task, NULL, &TelnetTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

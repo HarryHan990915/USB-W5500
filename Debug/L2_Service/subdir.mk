@@ -7,35 +7,47 @@
 C_SRCS += \
 ../L2_Service/config_service.c \
 ../L2_Service/diag_service.c \
+../L2_Service/http_queue.c \
+../L2_Service/http_server.c \
+../L2_Service/http_task.c \
 ../L2_Service/net_service.c \
 ../L2_Service/scpi_queue.c \
 ../L2_Service/scpi_server.c \
 ../L2_Service/scpi_short_task.c \
 ../L2_Service/string_service.c \
 ../L2_Service/telnet_queue.c \
-../L2_Service/telnet_server.c 
+../L2_Service/telnet_server.c \
+../L2_Service/telnet_task.c 
 
 OBJS += \
 ./L2_Service/config_service.o \
 ./L2_Service/diag_service.o \
+./L2_Service/http_queue.o \
+./L2_Service/http_server.o \
+./L2_Service/http_task.o \
 ./L2_Service/net_service.o \
 ./L2_Service/scpi_queue.o \
 ./L2_Service/scpi_server.o \
 ./L2_Service/scpi_short_task.o \
 ./L2_Service/string_service.o \
 ./L2_Service/telnet_queue.o \
-./L2_Service/telnet_server.o 
+./L2_Service/telnet_server.o \
+./L2_Service/telnet_task.o 
 
 C_DEPS += \
 ./L2_Service/config_service.d \
 ./L2_Service/diag_service.d \
+./L2_Service/http_queue.d \
+./L2_Service/http_server.d \
+./L2_Service/http_task.d \
 ./L2_Service/net_service.d \
 ./L2_Service/scpi_queue.d \
 ./L2_Service/scpi_server.d \
 ./L2_Service/scpi_short_task.d \
 ./L2_Service/string_service.d \
 ./L2_Service/telnet_queue.d \
-./L2_Service/telnet_server.d 
+./L2_Service/telnet_server.d \
+./L2_Service/telnet_task.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -45,7 +57,7 @@ L2_Service/%.o L2_Service/%.su L2_Service/%.cyclo: ../L2_Service/%.c L2_Service/
 clean: clean-L2_Service
 
 clean-L2_Service:
-	-$(RM) ./L2_Service/config_service.cyclo ./L2_Service/config_service.d ./L2_Service/config_service.o ./L2_Service/config_service.su ./L2_Service/diag_service.cyclo ./L2_Service/diag_service.d ./L2_Service/diag_service.o ./L2_Service/diag_service.su ./L2_Service/net_service.cyclo ./L2_Service/net_service.d ./L2_Service/net_service.o ./L2_Service/net_service.su ./L2_Service/scpi_queue.cyclo ./L2_Service/scpi_queue.d ./L2_Service/scpi_queue.o ./L2_Service/scpi_queue.su ./L2_Service/scpi_server.cyclo ./L2_Service/scpi_server.d ./L2_Service/scpi_server.o ./L2_Service/scpi_server.su ./L2_Service/scpi_short_task.cyclo ./L2_Service/scpi_short_task.d ./L2_Service/scpi_short_task.o ./L2_Service/scpi_short_task.su ./L2_Service/string_service.cyclo ./L2_Service/string_service.d ./L2_Service/string_service.o ./L2_Service/string_service.su ./L2_Service/telnet_queue.cyclo ./L2_Service/telnet_queue.d ./L2_Service/telnet_queue.o ./L2_Service/telnet_queue.su ./L2_Service/telnet_server.cyclo ./L2_Service/telnet_server.d ./L2_Service/telnet_server.o ./L2_Service/telnet_server.su
+	-$(RM) ./L2_Service/config_service.cyclo ./L2_Service/config_service.d ./L2_Service/config_service.o ./L2_Service/config_service.su ./L2_Service/diag_service.cyclo ./L2_Service/diag_service.d ./L2_Service/diag_service.o ./L2_Service/diag_service.su ./L2_Service/http_queue.cyclo ./L2_Service/http_queue.d ./L2_Service/http_queue.o ./L2_Service/http_queue.su ./L2_Service/http_server.cyclo ./L2_Service/http_server.d ./L2_Service/http_server.o ./L2_Service/http_server.su ./L2_Service/http_task.cyclo ./L2_Service/http_task.d ./L2_Service/http_task.o ./L2_Service/http_task.su ./L2_Service/net_service.cyclo ./L2_Service/net_service.d ./L2_Service/net_service.o ./L2_Service/net_service.su ./L2_Service/scpi_queue.cyclo ./L2_Service/scpi_queue.d ./L2_Service/scpi_queue.o ./L2_Service/scpi_queue.su ./L2_Service/scpi_server.cyclo ./L2_Service/scpi_server.d ./L2_Service/scpi_server.o ./L2_Service/scpi_server.su ./L2_Service/scpi_short_task.cyclo ./L2_Service/scpi_short_task.d ./L2_Service/scpi_short_task.o ./L2_Service/scpi_short_task.su ./L2_Service/string_service.cyclo ./L2_Service/string_service.d ./L2_Service/string_service.o ./L2_Service/string_service.su ./L2_Service/telnet_queue.cyclo ./L2_Service/telnet_queue.d ./L2_Service/telnet_queue.o ./L2_Service/telnet_queue.su ./L2_Service/telnet_server.cyclo ./L2_Service/telnet_server.d ./L2_Service/telnet_server.o ./L2_Service/telnet_server.su ./L2_Service/telnet_task.cyclo ./L2_Service/telnet_task.d ./L2_Service/telnet_task.o ./L2_Service/telnet_task.su
 
 .PHONY: clean-L2_Service
 

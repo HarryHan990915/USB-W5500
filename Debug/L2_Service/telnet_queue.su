@@ -1,4 +1,4 @@
-../L2_Service/telnet_queue.c:9:6:telnet_queue_init	8	static
-../L2_Service/telnet_queue.c:15:6:telnet_queue_push	160	static
-../L2_Service/telnet_queue.c:34:6:telnet_queue_register_tx_wake	16	static
-../L2_Service/telnet_queue.c:39:6:telnet_queue_notify_tx	8	static
+../L2_Service/telnet_queue.c:10:6:telnet_queue_init	8	static
+../L2_Service/telnet_queue.c:17:6:telnet_queue_push	160	static
+../L2_Service/telnet_queue.c:35:6:telnet_queue_register_tx_wake	16	static
+../L2_Service/telnet_queue.c:40:6:telnet_queue_notify_tx	8	static

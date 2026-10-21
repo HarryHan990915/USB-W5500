@@ -4,15 +4,23 @@
 #include "scpi_server.h"
 #include "scpi_short_task.h"
 #include "telnet_server.h"
+#include "telnet_task.h"
+#include "http_server.h"
+#include "http_task.h"
 #include "led_bench.h"
 #include "cmsis_os.h"
 #include <stdio.h>
 #include <string.h>
 
-/* Task handles created in main.c (CubeMX-generated osThreadNew calls). */
+/* Task handles created in main.c. Most via CubeMX-generated osThreadNew()
+ * calls; HttpTaskHandle/TelnetTaskHandle are hand-added inside USER CODE
+ * markers instead (not in the .ioc's FreeRTOS task list — see the note by
+ * HttpTaskHandle's declaration). */
 extern osThreadId_t NetTaskHandle;
 extern osThreadId_t ScpiShortTaskHandle;
 extern osThreadId_t ScpiLongTaskHandle;
+extern osThreadId_t HttpTaskHandle;
+extern osThreadId_t TelnetTaskHandle;
 extern osThreadId_t HousekeepTaskHandle;
 
 #define NET_WAKE_FLAG 0x1U
@@ -62,6 +70,7 @@ void app_net_task(void *argument)
         net_service_poll();
         scpi_socket_poll();
         telnet_socket_poll();
+        http_socket_poll();
     }
 }
 
@@ -76,6 +85,24 @@ void app_scpi_short_task(void *argument)
     /* scpi_short_task_run() is itself an infinite loop (blocks on
      * scpi_rx_queue, parses, dispatches) — no outer for(;;) needed here. */
     scpi_short_task_run();
+}
+
+void app_http_task(void *argument)
+{
+    (void)argument;
+    /* http_task_run() is itself an infinite loop (blocks on http_rx_queue,
+     * buffers the request, replies with the static page) — no outer for(;;)
+     * needed here. */
+    http_task_run();
+}
+
+void app_telnet_task(void *argument)
+{
+    (void)argument;
+    /* telnet_task_run() is itself an infinite loop (blocks on
+     * telnet_log_queue, forwards to telnet_tx_queue) — no outer for(;;)
+     * needed here. */
+    telnet_task_run();
 }
 
 void app_scpi_long_task(void *argument)
@@ -126,6 +153,8 @@ void app_housekeep_task(void *argument)
             report_stack("Net", NetTaskHandle);
             report_stack("ScpiShort", ScpiShortTaskHandle);
             report_stack("ScpiLong", ScpiLongTaskHandle);
+            report_stack("Http", HttpTaskHandle);
+            report_stack("Telnet", TelnetTaskHandle);
             report_stack("Housekeep", HousekeepTaskHandle);
 
             char wake_buf[64];

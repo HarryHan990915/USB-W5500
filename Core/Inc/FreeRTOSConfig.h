@@ -68,7 +68,15 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 56 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)96)
-#define configTOTAL_HEAP_SIZE                    ((size_t)12000)
+/* Bumped from 12000 -> 20000 -> 24000 across a few changes: telnet's log
+ * queue(s), HTTP's rx/tx queues, and each new task's own stack (HttpTask,
+ * then TelnetTask) all come out of this one pool, and 12000 was already
+ * crash-looping the board (silent pvPortMalloc NULL -> first use of that NULL
+ * handle) before DHCP ever completed once HTTP landed. Non-heap RAM usage
+ * (.data + .bss outside this buffer + the MSP stack reserve) is only ~7.5KB
+ * of the chip's 36KB total, so even 24000 leaves a healthy margin — no need
+ * to re-litigate this every time another task/queue is added. */
+#define configTOTAL_HEAP_SIZE                    ((size_t)24000)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_16_BIT_TICKS                   0
 #define configUSE_MUTEXES                        1

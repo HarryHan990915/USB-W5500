@@ -2,19 +2,21 @@
 #include "uart_log.h"
 #include <string.h>
 
+osMessageQueueId_t telnet_log_queueHandle;
 osMessageQueueId_t telnet_tx_queueHandle;
 
 static void (*s_tx_wake_fn)(void) = 0;
 
 void telnet_queue_init(void)
 {
+    telnet_log_queueHandle = osMessageQueueNew(TELNET_QUEUE_DEPTH, sizeof(telnet_queue_msg_t), NULL);
     telnet_tx_queueHandle = osMessageQueueNew(TELNET_QUEUE_DEPTH, sizeof(telnet_queue_msg_t), NULL);
     uart_log_set_tap(telnet_queue_push);
 }
 
 void telnet_queue_push(const char *msg, uint16_t len)
 {
-    if (telnet_tx_queueHandle == NULL) {
+    if (telnet_log_queueHandle == NULL) {
         return;
     }
     if (len > TELNET_QUEUE_MSG_LEN) {
@@ -25,10 +27,9 @@ void telnet_queue_push(const char *msg, uint16_t len)
     qmsg.len = len;
     memcpy(qmsg.data, msg, len);
 
-    if (osMessageQueuePut(telnet_tx_queueHandle, &qmsg, 0, 0) == osOK) {
-        telnet_queue_notify_tx();
-    }
-    /* Full queue (no telnet client draining it): drop silently, see header. */
+    /* Full queue (TelnetTask fell behind, or no telnet client to drain the
+     * far end): drop silently, see header. */
+    (void)osMessageQueuePut(telnet_log_queueHandle, &qmsg, 0, 0);
 }
 
 void telnet_queue_register_tx_wake(void (*wake_fn)(void))
