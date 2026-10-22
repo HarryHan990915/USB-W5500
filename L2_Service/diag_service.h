@@ -17,6 +17,12 @@ void diag_log_scpi_recv_stats(void);
 
 void diag_log_buffer_stats(void);
 
+/* Logs scpi_rx_queue/scpi_tx_queue drop counts (see
+ * scpi_queue_note_rx_drop()/scpi_queue_note_tx_drop() doc comment) — these
+ * count commands/replies silently lost because the other side's queue
+ * stayed full for the full bounded wait, which used to leave zero trace. */
+void diag_log_scpi_queue_stats(void);
+
 /* TIM2-backed microsecond latency instrumentation, backing DIAGnostic:LATency?.
  * mark_start/mark_end bracket one SCPI command's receive-to-reply-sent span. */
 void diag_latency_init(void);

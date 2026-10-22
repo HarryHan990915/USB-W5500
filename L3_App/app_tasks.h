@@ -15,11 +15,6 @@ void app_scpi_long_task(void *argument);
  * bytes from http_rx_queue (filled by NetTask) and produces a reply onto
  * http_tx_queue (drained by NetTask) — see http_queue.h. */
 void app_http_task(void *argument);
-/* Owns telnet's "what to do with a log line" logic (a plain forward today).
- * Consumes raw lines from telnet_log_queue (filled by uart_log_write()'s tap)
- * and produces bytes onto telnet_tx_queue (drained by NetTask) — see
- * telnet_queue.h. */
-void app_telnet_task(void *argument);
 void app_housekeep_task(void *argument);
 
 /* Registered with net_service_register_int_wake(); wakes NetTask from the

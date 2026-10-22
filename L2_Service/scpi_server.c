@@ -29,6 +29,20 @@ static void socket_poll(uint8_t sock_no)
         scpi_queue_msg_t stale;
         while (osMessageQueueGet(scpi_rx_queueHandle, &stale, NULL, 0) == osOK) { }
 
+        /* Same move for scpi_tx_queue: a reply ScpiShortTask already queued
+         * for the connection that just died (e.g. the client disconnected —
+         * cleanly or via RST — before NetTask got around to draining it)
+         * used to sit here until the NEXT connection on this socket number
+         * came along, at which point drain_tx_queue() would ship this
+         * leftover ghost reply out to that unrelated new client (or, if that
+         * new connection wasn't up yet, fail to send it and log a confusing
+         * "CLOSING sock1(SCPI)" for a connection that's already gone) —
+         * corrupting that session's reply order instead of just being
+         * dropped. Safe to flush ALL of scpi_tx_queue here: SCPI_SLOTS==1
+         * today, so every queued message already targets this one socket;
+         * revisit (filter by sock_no) if SCPI_SLOTS ever grows. */
+        while (osMessageQueueGet(scpi_tx_queueHandle, &stale, NULL, 0) == osOK) { }
+
         socket(sock_no, Sn_MR_TCP, SCPI_PORT, SF_TCP_NODELAY);
         listen(sock_no);
         break;
@@ -68,8 +82,12 @@ static void socket_poll(uint8_t sock_no)
              * FIFO — dropping it here loses it for good instead of just
              * delaying it. ScpiShortTask is normally blocked waiting on this
              * exact queue, so under normal operation this never actually
-             * waits. */
-            (void)osMessageQueuePut(scpi_rx_queueHandle, &msg, 0, 50);
+             * waits. If it's still full 50 ticks later, the command is lost
+             * — count it instead of silently discarding, see
+             * scpi_queue_note_rx_drop() doc comment. */
+            if (osMessageQueuePut(scpi_rx_queueHandle, &msg, 0, 50) != osOK) {
+                scpi_queue_note_rx_drop();
+            }
         }
         w5500_clear_socket_con_discon_ir(sock_no);
         break;

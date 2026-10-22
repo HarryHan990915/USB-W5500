@@ -28,7 +28,14 @@
  * produces (the IDN string is ~35 bytes) — not a hard protocol limit, just
  * this queue message's fixed capacity. */
 #define SCPI_QUEUE_MSG_LEN 300U
-#define SCPI_QUEUE_DEPTH 4U
+/* Was 4 — bumped to 8 after observing silent drops under a burst of several
+ * back-to-back commands/replies arriving faster than the other side drains
+ * them (e.g. a client firing off 3 queries without waiting for each reply:
+ * all 3 land in one w5500_hardened_recv() call, so ScpiShortTask produces 3
+ * replies back-to-back with zero gap between them). See
+ * scpi_queue_note_rx_drop()/scpi_queue_note_tx_drop() below for the counters
+ * that exposed this. */
+#define SCPI_QUEUE_DEPTH 8U
 
 typedef struct {
     uint8_t sock_no;
@@ -58,5 +65,15 @@ void scpi_queue_register_tx_wake(void (*wake_fn)(void));
  * Called by scpi_write_cb() in scpi_short_task.c right after a successful
  * osMessageQueuePut() onto scpi_tx_queueHandle. */
 void scpi_queue_notify_tx(void);
+
+/* Both queue puts (scpi_server.c's RX hand-off, scpi_short_task.c's
+ * scpi_write_cb() TX hand-off) use a bounded-wait osMessageQueuePut() and,
+ * before this, silently discarded the message on failure — a command or
+ * reply could vanish with zero trace. These count every time that happens,
+ * so a real occurrence shows up in diag_log_scpi_queue_stats() instead of
+ * looking identical to "nothing happened". */
+void scpi_queue_note_rx_drop(void);
+void scpi_queue_note_tx_drop(void);
+void scpi_queue_get_drop_stats(uint32_t *rx_drops, uint32_t *tx_drops);
 
 #endif

@@ -172,30 +172,229 @@ def find_device_ip(verbose=True):
 
     return result
 
+def burst_test(ip, rounds=20, burst_size=5, cmd="*IDN?",
+                expected="Company,CableTester,SN001,FW1.0", round_pause=0.5):
+    """Stress test for the rapid-fire reply-loss issue (see this module's
+    docstring): fires `burst_size` copies of `cmd` back-to-back in one
+    sendall() call — zero delay between them, unlike the spaced-out CASES
+    test below — then waits for all `burst_size` replies before starting the
+    next round. Reports exactly how many replies went missing, per round and
+    in total, instead of just "looks fine" / "looks broken"."""
+    print(f"Connecting to {ip}:{PORT} for burst test ({rounds} rounds x {burst_size} commands, cmd={cmd!r})...")
+    s = socket.create_connection((ip, PORT), timeout=5)
+    print("Connected.\n")
+
+    total_sent = 0
+    total_received = 0
+    rounds_with_loss = 0
+
+    try:
+        for r in range(1, rounds + 1):
+            payload = (cmd + "\n") * burst_size
+            try:
+                s.sendall(payload.encode())
+            except OSError as e:
+                print(f"[round {r}] send failed — connection dropped: {e}")
+                break
+            total_sent += burst_size
+
+            replies = []
+            buf = b""
+            deadline = time.time() + 3.0
+            while len(replies) < burst_size and time.time() < deadline:
+                s.settimeout(max(0.05, deadline - time.time()))
+                try:
+                    chunk = s.recv(4096)
+                except socket.timeout:
+                    break
+                if not chunk:
+                    break
+                buf += chunk
+                while b"\n" in buf:
+                    line, buf = buf.split(b"\n", 1)
+                    replies.append(line.decode(errors="replace").strip())
+
+            total_received += len(replies)
+            lost = burst_size - len(replies)
+            if lost > 0:
+                rounds_with_loss += 1
+                print(f"[round {r:3d}] sent {burst_size}, got {len(replies)} replies  <-- LOST {lost}")
+            else:
+                bad = [rep for rep in replies if expected is not None and rep != expected]
+                tag = "OK" if not bad else f"OK but {len(bad)} had unexpected content: {bad!r}"
+                print(f"[round {r:3d}] sent {burst_size}, got {len(replies)} replies  [{tag}]")
+
+            time.sleep(round_pause)
+    finally:
+        _clean_close(s)
+
+    print(f"\nBurst test done: {total_received}/{total_sent} replies received "
+          f"({rounds_with_loss}/{rounds} rounds had at least one lost reply).")
+    return total_sent, total_received
+
+
 CASES = [
+    # Only commands actually registered in L3_App/scpi_commands.c's
+    # s_scpi_commands table that are *idn?/*tst? (universal SCPI) or
+    # TEST:LED:* — everything else (SYSTem:*, CONFigure:*, MEASure:*,
+    # FETCh:*, TEST:STRing:*, TEST:ECHO?) is either not implemented by this
+    # firmware at all or deliberately excluded here by request.
     ('*IDN?', 'Company,CableTester,SN001,FW1.0'),
     ('*TST?', '0'),  # 0 = full self-test pass
-    ('TEST:ECHO? "hello"', '"hello"'),
-    ('TEST:STRing:LENgth? "abc"', '3'),
-    ('TEST:STRing:UPPer? "Ab1"', '"AB1"'),
-    ('TEST:STRing:REVerse? "abc"', '"cba"'),
-    ('TEST:STRing:CRC? "123456789"', '"CBF43926"'),
-    ('TEST:STRing:STORe "abc"', None),  # no reply expected (not a query)
-    ('TEST:STRing:STORe?', '"abc"'),
-    ('TEST:COUNt?', None),  # just an increasing integer, no fixed expected value
-    ('SYSTem:ERRor?', None),  # whatever's in the error queue
-    ('CONFigure:PINS 8', None),  # no reply (not a query)
-    ('CONFigure:THReshold:RESistance 50', None),  # ohms, no reply
-    ('MEASure:CONTinuity?', None),  # 0 = all pins pass, 1 = at least one fault
-    ('FETCh:RESult?', None),  # per-pin OPEN/OK/SHORT/MISWIRE list
-    ('DIAGnostic:LATency?', None),  # previous command's recv-to-reply-sent, in microseconds
-    ('SYSTem:CONFig:SAVE', None),  # persists current pin count/threshold/IP config to flash
+    ('TEST:LED:INTerval?', None),  # current blink interval in ms — varies
+    ('TEST:LED:STATus?', None),  # "running,done,total" — varies
+    ('TEST:LED:BLINk 20', 'OK'),
+    ('TEST:LED:STATus?', None),
+    ('TEST:LED:ABORt', 'OK'),
+    ('TEST:LED:STATus?', None),
 ]
+
+# Cycled through by semicolon_burst_test() below — same restriction (basic +
+# TEST:LED:* only), queries only so every command always produces a reply to
+# count.
+BASIC_QUERY_CMDS = ['*IDN?', '*TST?', 'TEST:LED:STATus?', 'TEST:LED:INTerval?']
+
+
+def semicolon_burst_test(ip, rounds=20, group_size=4, round_pause=0.5):
+    """Joins `group_size` commands (cycled from BASIC_QUERY_CMDS) onto ONE
+    line with ';' separators — standard SCPI syntax for chaining multiple
+    commands on one line (confirmed working manually: '*idn?;*idn?' comes
+    back as both replies joined by ';' on one line) — and checks that exactly
+    `group_size` semicolon-separated reply fields come back every round.
+
+    This is different from burst_test() above: that one fires `burst_size`
+    separate \\n-terminated commands back-to-back with no delay. This one
+    sends ONE line containing multiple ';'-separated commands — the scenario
+    specifically asked for: does a single combined multi-command line ever
+    lose one of its reply fields.
+
+    IMPORTANT: uses a receive buffer that PERSISTS across rounds (see
+    read_one_line() below), not a fresh one per round. An earlier version
+    reset its buffer every round and gave up on timeout — if a reply simply
+    arrived a little late, the abandoned bytes sat in the OS socket buffer
+    and got picked up (and potentially merged with) a LATER round's read,
+    which looked exactly like random reply loss/corruption but was actually
+    just this script misattributing slow-but-intact replies to the wrong
+    round. Carrying one buffer across the whole connection and always
+    splitting off exactly one line at a time fixes that: a late reply still
+    shows up in full, on whichever read call it actually arrives before,
+    never merged with another line."""
+    print(f"Connecting to {ip}:{PORT} for semicolon-burst test "
+          f"({rounds} rounds x {group_size} commands/line)...")
+    s = socket.create_connection((ip, PORT), timeout=5)
+    print("Connected.\n")
+
+    recv_buf = b""
+
+    def read_one_line(deadline_s):
+        nonlocal recv_buf
+        end = time.time() + deadline_s
+        while b"\n" not in recv_buf and time.time() < end:
+            s.settimeout(max(0.05, end - time.time()))
+            try:
+                chunk = s.recv(4096)
+            except socket.timeout:
+                continue
+            if not chunk:
+                break
+            recv_buf += chunk
+        if b"\n" in recv_buf:
+            line, recv_buf = recv_buf.split(b"\n", 1)
+            return line.decode(errors="replace").strip()
+        return None  # nothing complete yet — may still show up on a later call
+
+    total_sent = 0
+    total_received = 0
+    rounds_with_loss = 0
+    cmd_cycle = 0
+
+    try:
+        for r in range(1, rounds + 1):
+            cmds = [BASIC_QUERY_CMDS[(cmd_cycle + i) % len(BASIC_QUERY_CMDS)] for i in range(group_size)]
+            cmd_cycle += group_size
+            # SCPI compound-command rule: a chained command that doesn't start
+            # with ':' or '*' is treated as an ABBREVIATION of the previous
+            # command's hierarchical prefix (see
+            # ThirdParty/scpi-parser/libscpi/src/utils.c's
+            # composeCompoundCommand()) — writing a second FULL path like
+            # "TEST:LED:STATus?;TEST:LED:INTerval?" makes the parser prepend
+            # the previous prefix AGAIN, producing the bogus
+            # "TEST:LED:TEST:LED:INTerval?" and silently dropping that
+            # command. A leading ':' on every full path after the first
+            # avoids that (same fix as always abbreviating would give).
+            line = cmds[0] + "".join(
+                (";" + c) if c.startswith("*") else (";:" + c) for c in cmds[1:]
+            ) + "\n"
+            try:
+                s.sendall(line.encode())
+            except OSError as e:
+                print(f"[round {r}] send failed — connection dropped: {e}")
+                break
+            total_sent += group_size
+
+            reply_line = read_one_line(3.0)
+            parts = reply_line.split(";") if reply_line else []
+
+            total_received += len(parts)
+            lost = group_size - len(parts)
+            sent_desc = line.strip()
+            if lost > 0:
+                rounds_with_loss += 1
+                print(f"[round {r:3d}] sent [{sent_desc}]")
+                print(f"              -> got {len(parts)}/{group_size} fields  <-- LOST {lost} (or just late): {parts!r}")
+            else:
+                print(f"[round {r:3d}] sent [{sent_desc}] -> got {len(parts)}/{group_size} fields  [OK]")
+
+            time.sleep(round_pause)
+
+        # Give anything still in flight a last chance to land before judging
+        # total loss, now that late replies are never silently merged/lost.
+        deadline = time.time() + 2.0
+        while time.time() < deadline:
+            line = read_one_line(deadline - time.time())
+            if line is None:
+                break
+            parts = line.split(";")
+            total_received += len(parts)
+            print(f"[late arrival] -> {parts!r}")
+    finally:
+        _clean_close(s)
+
+    print(f"\nSemicolon-burst test done: {total_received}/{total_sent} reply fields received "
+          f"({rounds_with_loss}/{rounds} rounds had at least one lost-or-late field).")
+    return total_sent, total_received
 
 
 def main():
-    if len(sys.argv) > 1:
-        ip = sys.argv[1]
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Manual SCPI test — spaced-out by default (safe); "
+                     "--burst switches to a rapid-fire reply-loss stress test.")
+    parser.add_argument("ip", nargs="?", default=None,
+                         help="Device IP (default: auto-scan the local /24, or just pass "
+                              "the fixed IP directly, e.g. 192.168.2.131)")
+    parser.add_argument("--burst", action="store_true",
+                         help="Rapid-fire test: `--size` separate \\n-terminated copies of "
+                              "`--cmd` back-to-back with no delay between them.")
+    parser.add_argument("--semicolon", action="store_true",
+                         help="Semicolon-burst test: `--size` DIFFERENT basic/TEST:LED commands "
+                              "joined with ';' on ONE line (standard SCPI multi-command syntax) — "
+                              "checks whether any of the ';'-separated reply fields go missing.")
+    parser.add_argument("--rounds", type=int, default=20, help="Burst modes: number of rounds (default 20)")
+    parser.add_argument("--size", type=int, default=5, help="Burst modes: commands per round (default 5)")
+    parser.add_argument("--cmd", default="*IDN?", help="--burst only: command to repeat (default *IDN?)")
+    parser.add_argument("--pause", type=float, default=0.5,
+                         help="Burst modes: seconds between rounds (default 0.5) — the gap a real "
+                              "client leaves between commands; manual typing naturally gives >=1s.")
+    args = parser.parse_args()
+
+    if args.burst and args.semicolon:
+        print("Pass only one of --burst / --semicolon.")
+        sys.exit(2)
+
+    if args.ip:
+        ip = args.ip
     else:
         ip = find_device_ip()
         if ip is None:
@@ -204,6 +403,17 @@ def main():
             print("  python manual_scpi_test.py <ip>")
             sys.exit(1)
         print(f"Found device at {ip}\n")
+
+    if args.burst:
+        expected = "Company,CableTester,SN001,FW1.0" if args.cmd.strip().upper() == "*IDN?" else None
+        sent, received = burst_test(ip, rounds=args.rounds, burst_size=args.size,
+                                     cmd=args.cmd, expected=expected, round_pause=args.pause)
+        sys.exit(0 if sent == received else 1)
+
+    if args.semicolon:
+        sent, received = semicolon_burst_test(ip, rounds=args.rounds, group_size=args.size,
+                                               round_pause=args.pause)
+        sys.exit(0 if sent == received else 1)
 
     print(f"Connecting to {ip}:{PORT} ...")
     s = socket.create_connection((ip, PORT), timeout=5)

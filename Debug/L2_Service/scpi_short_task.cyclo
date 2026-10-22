@@ -1,4 +1,5 @@
-../L2_Service/scpi_short_task.c:22:15:scpi_write_cb	3
-../L2_Service/scpi_short_task.c:53:6:scpi_short_task_init	2
-../L2_Service/scpi_short_task.c:70:21:find_slot	3
-../L2_Service/scpi_short_task.c:80:6:scpi_short_task_run	3
+../L2_Service/scpi_short_task.c:37:15:scpi_write_cb	2
+../L2_Service/scpi_short_task.c:61:13:scpi_flush_output	3
+../L2_Service/scpi_short_task.c:89:6:scpi_short_task_init	2
+../L2_Service/scpi_short_task.c:106:21:find_slot	3
+../L2_Service/scpi_short_task.c:116:6:scpi_short_task_run	3

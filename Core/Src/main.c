@@ -80,7 +80,15 @@ osThreadId_t ScpiShortTaskHandle;
 const osThreadAttr_t ScpiShortTask_attributes = {
   .name = "ScpiShortTask",
   .priority = (osPriority_t) osPriorityAboveNormal,
-  .stack_size = 384 * 4
+  /* Bumped from 384*4: observed down to 32 bytes free (see STACK ScpiShort:
+   * in diagnostic logs) while processing a semicolon-chained multi-command
+   * SCPI line (up to 3 commands/line needs to be supported) — far too close
+   * to an actual overflow, which on FreeRTOS corrupts whatever's adjacent in
+   * RAM rather than failing cleanly. Paid for by removing TelnetTask and its
+   * two queues (not needed — telnet support has been dropped entirely, see
+   * L2_Service/telnet_* removal), which freed up more heap than this adds
+   * back. */
+  .stack_size = 768 * 4
 };
 /* Definitions for HousekeepTask */
 osThreadId_t HousekeepTaskHandle;
@@ -113,15 +121,6 @@ const osThreadAttr_t HttpTask_attributes = {
   .stack_size = 384 * 4
 };
 
-/* Same reasoning as HttpTask above: TelnetTask isn't in the .ioc either.
- * Lower priority than HttpTask/ScpiShortTask — it's just forwarding log
- * lines, nothing here is latency-sensitive the way a SCPI/HTTP reply is. */
-osThreadId_t TelnetTaskHandle;
-const osThreadAttr_t TelnetTask_attributes = {
-  .name = "TelnetTask",
-  .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 256 * 4
-};
 
 /* USER CODE END PV */
 
@@ -247,8 +246,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* creation of HttpTask (hand-added, see note by HttpTaskHandle's declaration) */
   HttpTaskHandle = osThreadNew(app_http_task, NULL, &HttpTask_attributes);
-  /* creation of TelnetTask (hand-added, same reasoning) */
-  TelnetTaskHandle = osThreadNew(app_telnet_task, NULL, &TelnetTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

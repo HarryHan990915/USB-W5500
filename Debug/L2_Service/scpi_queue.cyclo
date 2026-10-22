@@ -1,3 +1,6 @@
-../L2_Service/scpi_queue.c:8:6:scpi_queue_init	1
-../L2_Service/scpi_queue.c:14:6:scpi_queue_register_tx_wake	1
-../L2_Service/scpi_queue.c:19:6:scpi_queue_notify_tx	2
+../L2_Service/scpi_queue.c:10:6:scpi_queue_init	1
+../L2_Service/scpi_queue.c:16:6:scpi_queue_register_tx_wake	1
+../L2_Service/scpi_queue.c:21:6:scpi_queue_notify_tx	2
+../L2_Service/scpi_queue.c:28:6:scpi_queue_note_rx_drop	1
+../L2_Service/scpi_queue.c:33:6:scpi_queue_note_tx_drop	1
+../L2_Service/scpi_queue.c:38:6:scpi_queue_get_drop_stats	1

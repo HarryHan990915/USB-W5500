@@ -2,6 +2,7 @@
 #include "uart_log.h"
 #include "w5500_port.h"
 #include "sys_time.h"
+#include "scpi_queue.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -75,10 +76,6 @@ void diag_log_buffer_stats(void)
     n = snprintf(buf, sizeof(buf), "BUF sock1(SCPI): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
     if (n > 0) { uart_log_write(buf, (uint16_t)n); }
 
-    w5500_get_buffer_state(2, &tx_fsr, &rx_rsr);
-    n = snprintf(buf, sizeof(buf), "BUF sock2(Telnet): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
-    if (n > 0) { uart_log_write(buf, (uint16_t)n); }
-
     w5500_get_buffer_state(3, &tx_fsr, &rx_rsr);
     n = snprintf(buf, sizeof(buf), "BUF sock3(HTTP): tx_fsr=%u rx_rsr=%u\r\n", tx_fsr, rx_rsr);
     if (n > 0) { uart_log_write(buf, (uint16_t)n); }
@@ -99,6 +96,20 @@ void diag_log_scpi_recv_stats(void)
         "RECV STATS: sock1_ir=0x%02X vote_fail=%lu rsr_disagree=%lu cr_timeout=%lu success=%lu\r\n",
         ir, (unsigned long)vote_fail, (unsigned long)rsr_disagree,
         (unsigned long)cr_timeout, (unsigned long)success);
+    if (n > 0) {
+        uart_log_write(buf, (uint16_t)n);
+    }
+}
+
+void diag_log_scpi_queue_stats(void)
+{
+    uint32_t rx_drops, tx_drops;
+    scpi_queue_get_drop_stats(&rx_drops, &tx_drops);
+
+    char buf[64];
+    int n = snprintf(buf, sizeof(buf),
+        "SCPI QUEUE: rx_drops=%lu tx_drops=%lu\r\n",
+        (unsigned long)rx_drops, (unsigned long)tx_drops);
     if (n > 0) {
         uart_log_write(buf, (uint16_t)n);
     }

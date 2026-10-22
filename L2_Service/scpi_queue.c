@@ -4,6 +4,8 @@ osMessageQueueId_t scpi_rx_queueHandle;
 osMessageQueueId_t scpi_tx_queueHandle;
 
 static void (*s_tx_wake_fn)(void) = 0;
+static uint32_t s_rx_drop_count = 0;
+static uint32_t s_tx_drop_count = 0;
 
 void scpi_queue_init(void)
 {
@@ -21,4 +23,20 @@ void scpi_queue_notify_tx(void)
     if (s_tx_wake_fn != 0) {
         s_tx_wake_fn();
     }
+}
+
+void scpi_queue_note_rx_drop(void)
+{
+    s_rx_drop_count++;
+}
+
+void scpi_queue_note_tx_drop(void)
+{
+    s_tx_drop_count++;
+}
+
+void scpi_queue_get_drop_stats(uint32_t *rx_drops, uint32_t *tx_drops)
+{
+    *rx_drops = s_rx_drop_count;
+    *tx_drops = s_tx_drop_count;
 }
