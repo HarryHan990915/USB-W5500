@@ -1,6 +1,7 @@
 #include "app_tasks.h"
 #include "diag_service.h"
 #include "net_service.h"
+#include "w5500_port.h"
 #include "scpi_short_task.h"
 #include "http_task.h"
 #include "led_bench.h"
@@ -72,15 +73,27 @@ void app_net_task(void *argument)
          * wake, NetTask would block forever on osWaitForever right out of
          * reset (nothing has happened on any socket yet to raise an
          * interrupt), and DHCP would never even start. */
-        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 5000);
+        uint32_t flags = osThreadFlagsWait(NET_WAKE_FLAG, osFlagsWaitAny, 3000);
         if (flags == osFlagsErrorTimeout) {
             s_net_timeout_wakes++;
         } else if ((flags & osFlagsError) == 0) {
             s_net_isr_wakes++;
         }
         net_service_poll();
+
+        /* One SIR read per wake, shared by every registered poller, instead
+         * of each poller unconditionally servicing every socket it owns on
+         * every wake (which is what "an interrupt fired somewhere" used to
+         * get treated as, since the EXTI itself can't say which socket):
+         * SIR's bit n mirrors socket n's masked Sn_IR live, so a 0 bit means
+         * genuinely nothing pending there right now, not just "we didn't
+         * check" — see w5500_get_sir() doc comment. Skipped entirely before
+         * the link is up: no sockets are open yet, so the read would just be
+         * wasted SPI traffic, and pollers already no-op on
+         * !net_service_is_serving(). */
+        uint8_t sir = net_service_is_serving() ? w5500_get_sir() : 0;
         for (int i = 0; i < s_poll_fn_count; i++) {
-            s_poll_fns[i]();
+            s_poll_fns[i](sir);
         }
     }
 }

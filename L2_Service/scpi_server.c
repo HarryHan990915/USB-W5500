@@ -16,7 +16,7 @@
  * works; revisit for a proper non-blocking fix (manual getSn_RX_RSR check +
  * raw read) at the FreeRTOS migration. */
 
-static void socket_poll(uint8_t sock_no)
+static void socket_poll(uint8_t sock_no, uint8_t sir)
 {
     uint8_t status = getSn_SR(sock_no);
 
@@ -67,29 +67,44 @@ static void socket_poll(uint8_t sock_no)
         w5500_clear_socket_con_discon_ir(sock_no);
         break;
     case SOCK_ESTABLISHED: {
-        static uint8_t buf[SCPI_QUEUE_MSG_LEN];
-        /* Hardened: ioLibrary's own recv() re-reads Sn_SR/Sn_RX_RSR internally
-         * with no retry margin, and a single misread there was closing
-         * perfectly good connections (see w5500_hardened_recv doc comment). */
-        int32_t n = w5500_hardened_recv(sock_no, buf, sizeof(buf));
-        if (n > 0) {
-            scpi_queue_msg_t msg;
-            msg.sock_no = sock_no;
-            msg.len = (uint16_t)n;
-            memcpy(msg.data, buf, (size_t)n);
-            /* Bounded wait, not instant-drop: by the time w5500_hardened_recv()
-             * returns, this data is already drained out of the W5500's RX
-             * FIFO — dropping it here loses it for good instead of just
-             * delaying it. ScpiShortTask is normally blocked waiting on this
-             * exact queue, so under normal operation this never actually
-             * waits. If it's still full 50 ticks later, the command is lost
-             * — count it instead of silently discarding, see
-             * scpi_queue_note_rx_drop() doc comment. */
-            if (osMessageQueuePut(scpi_rx_queueHandle, &msg, 0, 50) != osOK) {
-                scpi_queue_note_rx_drop();
+        /* Only attempt the recv if this socket's SIR bit says it actually has
+         * something pending (new data and/or a latched CON/DISCON) — SIR's
+         * bit n is a live mirror of socket n's masked Sn_IR (see
+         * w5500_get_sir() doc comment), so 0 here means genuinely nothing
+         * happened on this socket since it was last serviced. Skips
+         * w5500_hardened_recv()'s 5-sample status vote (the expensive part,
+         * several SPI reads) on every wake where this connection is just
+         * sitting idle, which on this board's electrically marginal link is
+         * SPI traffic worth not spending — see the CON/DISCON-clear doc
+         * comment above and w5500_clear_socket_con_discon_ir()'s in
+         * w5500_port.h for the same reasoning applied there already. */
+        if (sir & (1U << sock_no)) {
+            static uint8_t buf[SCPI_QUEUE_MSG_LEN];
+            /* Hardened: ioLibrary's own recv() re-reads Sn_SR/Sn_RX_RSR
+             * internally with no retry margin, and a single misread there was
+             * closing perfectly good connections (see w5500_hardened_recv doc
+             * comment). */
+            int32_t n = w5500_hardened_recv(sock_no, buf, sizeof(buf));
+            if (n > 0) {
+                scpi_queue_msg_t msg;
+                msg.sock_no = sock_no;
+                msg.len = (uint16_t)n;
+                memcpy(msg.data, buf, (size_t)n);
+                /* Bounded wait, not instant-drop: by the time
+                 * w5500_hardened_recv() returns, this data is already drained
+                 * out of the W5500's RX FIFO — dropping it here loses it for
+                 * good instead of just delaying it. ScpiShortTask is normally
+                 * blocked waiting on this exact queue, so under normal
+                 * operation this never actually waits. If it's still full 50
+                 * ticks later, the command is lost — count it instead of
+                 * silently discarding, see scpi_queue_note_rx_drop() doc
+                 * comment. */
+                if (osMessageQueuePut(scpi_rx_queueHandle, &msg, 0, 50) != osOK) {
+                    scpi_queue_note_rx_drop();
+                }
             }
+            w5500_clear_socket_con_discon_ir(sock_no);
         }
-        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     }
     default:
@@ -154,20 +169,21 @@ static void drain_tx_queue(void)
     }
 }
 
-void scpi_socket_poll(void)
+void scpi_socket_poll(uint8_t sir)
 {
     /* Drained unconditionally, even if the link just dropped and
      * net_service_is_serving() is about to go false: this both transmits
      * fresh replies promptly and flushes stale ones (send() on a now-closed
      * socket just fails harmlessly) instead of letting them linger in the
      * queue until some future, unrelated connection reuses this socket
-     * number. */
+     * number. Not SIR-gated: a queued reply comes from ScpiShortTask, not a
+     * socket event, so SIR has nothing to say about it. */
     drain_tx_queue();
 
     if (!net_service_is_serving()) {
         return;
     }
     for (int i = 0; i < SCPI_SLOTS; i++) {
-        socket_poll((uint8_t)(SCPI_FIRST_SOCKET + i));
+        socket_poll((uint8_t)(SCPI_FIRST_SOCKET + i), sir);
     }
 }

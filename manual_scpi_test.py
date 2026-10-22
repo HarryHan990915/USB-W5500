@@ -258,7 +258,7 @@ CASES = [
 # "OK" specifically so a dropped command is distinguishable from silence),
 # so every command here still counts 1-for-1 against group_size.
 BASIC_QUERY_CMDS = ['*IDN?', '*TST?', 'TEST:LED:STATus?', 'TEST:LED:INTerval?',
-                     'TEST:LED:BLINk 10', 'TEST:LED:ABORt']
+                     'TEST:LED:BLINk 5', 'TEST:LED:ABORt']
 
 
 def parse_reply_fields(raw, cmds):

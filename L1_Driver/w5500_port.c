@@ -201,6 +201,11 @@ uint8_t w5500_get_socket_ir(uint8_t sn)
     return getSn_IR(sn);
 }
 
+uint8_t w5500_get_sir(void)
+{
+    return getSIR();
+}
+
 int32_t w5500_hardened_recv(uint8_t sn, uint8_t *buf, uint16_t cap)
 {
     int agree = 0;

@@ -20,7 +20,7 @@ static uint32_t s_sendok_deadline_ms;
  * can't wedge the one HTTP socket forever. */
 #define HTTP_SENDOK_TIMEOUT_MS 2000U
 
-static void socket_poll(uint8_t sock_no)
+static void socket_poll(uint8_t sock_no, uint8_t sir)
 {
     uint8_t status = getSn_SR(sock_no);
 
@@ -50,16 +50,24 @@ static void socket_poll(uint8_t sock_no)
         w5500_clear_socket_con_discon_ir(sock_no);
         break;
     case SOCK_ESTABLISHED: {
-        static uint8_t buf[HTTP_QUEUE_MSG_LEN];
-        int32_t n = w5500_hardened_recv(sock_no, buf, sizeof(buf));
-        if (n > 0) {
-            http_queue_msg_t msg;
-            msg.sock_no = sock_no;
-            msg.len = (uint16_t)n;
-            memcpy(msg.data, buf, (size_t)n);
-            (void)osMessageQueuePut(http_rx_queueHandle, &msg, 0, 50);
+        /* Only recv if this socket's SIR bit says something's actually
+         * pending — same reasoning as scpi_server.c's socket_poll(): SIR's
+         * bit n mirrors socket n's masked Sn_IR live, so 0 means nothing
+         * happened here since it was last serviced, and w5500_hardened_recv()
+         * (several SPI reads for its status vote) is worth skipping on this
+         * board's marginal link. */
+        if (sir & (1U << sock_no)) {
+            static uint8_t buf[HTTP_QUEUE_MSG_LEN];
+            int32_t n = w5500_hardened_recv(sock_no, buf, sizeof(buf));
+            if (n > 0) {
+                http_queue_msg_t msg;
+                msg.sock_no = sock_no;
+                msg.len = (uint16_t)n;
+                memcpy(msg.data, buf, (size_t)n);
+                (void)osMessageQueuePut(http_rx_queueHandle, &msg, 0, 50);
+            }
+            w5500_clear_socket_con_discon_ir(sock_no);
         }
-        w5500_clear_socket_con_discon_ir(sock_no);
         break;
     }
     default:
@@ -130,8 +138,10 @@ static void check_sendok(uint8_t sock_no)
     }
 }
 
-void http_socket_poll(void)
+void http_socket_poll(uint8_t sir)
 {
+    /* Not SIR-gated: a queued reply comes from HttpTask, not a socket event
+     * (same reasoning as scpi_server.c's scpi_socket_poll()). */
     drain_tx_queue();
 
     if (!net_service_is_serving()) {
@@ -139,7 +149,11 @@ void http_socket_poll(void)
     }
     for (int i = 0; i < HTTP_SLOTS; i++) {
         uint8_t sock_no = (uint8_t)(HTTP_FIRST_SOCKET + i);
+        /* check_sendok() reads Sn_IR_SENDOK directly, not via sir: SENDOK
+         * isn't in the Sn_IMR mask w5500_arm_interrupts() sets up (only
+         * RECV/DISCON/CON/TIMEOUT are), so it never contributes to this
+         * socket's SIR bit and SIR can't tell us anything about it. */
         check_sendok(sock_no);
-        socket_poll(sock_no);
+        socket_poll(sock_no, sir);
     }
 }

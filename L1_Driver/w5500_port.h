@@ -83,6 +83,16 @@ void w5500_clear_socket_con_discon_ir(uint8_t sn);
  * asserted (non-zero) when nothing should currently be pending. */
 uint8_t w5500_get_socket_ir(uint8_t sn);
 
+/* Raw read of the common SIR register: bit n set means socket n has an
+ * unmasked Sn_IR bit pending right now (it's a live OR of each socket's own
+ * Sn_IR & Sn_IMR, not a separate latch — clearing a socket's Sn_IR bits
+ * clears its SIR bit too, nothing to clear here directly). Lets a poller
+ * that owns several sockets skip the expensive per-socket work (e.g.
+ * w5500_hardened_recv()'s 5-sample vote) on sockets that have nothing
+ * pending, instead of unconditionally servicing every socket it owns on
+ * every NetTask wake. */
+uint8_t w5500_get_sir(void);
+
 /* Raw read of a socket's free TX space / available RX bytes — each maxes out
  * at 2048 (this project's per-socket buffer allocation). A value outside
  * [0, 2048], or one stuck unchanging across repeated calls on an active

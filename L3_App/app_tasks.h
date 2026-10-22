@@ -1,6 +1,8 @@
 #ifndef L3_APP_APP_TASKS_H
 #define L3_APP_APP_TASKS_H
 
+#include <stdint.h>
+
 /* Hard limit, not a tunable: the W5500 has exactly 8 hardware sockets (SIMR/
  * each socket's Sn_IMR is one bit of an 8-bit register — see
  * w5500_arm_interrupts() in L1_Driver/w5500_port.c), so this firmware can
@@ -8,14 +10,21 @@
  * pollers. Sized to the hardware, not picked arbitrarily. */
 #define NET_TASK_MAX_POLLS 8
 
-typedef void (*net_task_poll_fn_t)(void);
+/* sir is the W5500's common SIR register snapshot for this wake (0 if the
+ * link isn't up/serving yet) — bit n set means socket n has an unmasked
+ * Sn_IR bit pending right now, see w5500_get_sir() doc comment. Each poller
+ * uses it to skip the expensive per-socket work on sockets with nothing
+ * pending instead of unconditionally servicing every socket it owns on
+ * every wake. */
+typedef void (*net_task_poll_fn_t)(uint8_t sir);
 
 /* Registers a function NetTask calls once per poll cycle, after
  * net_service_poll() has updated link/DHCP state — the pattern every
  * protocol socket poller (scpi_socket_poll(), http_socket_poll(), ...)
  * already follows: check net_service_is_serving() internally, then poll its
- * own socket(s). Adding a new protocol is then just one call here, with no
- * changes to app_net_task()/app_tasks.c itself.
+ * own socket(s), using the passed-in sir to decide which of its sockets
+ * actually need servicing. Adding a new protocol is then just one call here,
+ * with no changes to app_net_task()/app_tasks.c itself.
  *
  * Must be called during app_init() — before osKernelStart() — not safe to
  * call once NetTask is already running (no locking around the registry).
