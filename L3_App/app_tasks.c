@@ -106,6 +106,16 @@ void app_scpi_long_task(void *argument)
     }
 }
 
+#ifdef DEBUG
+/* Per-task stack high-water-mark logging — Debug-build only (see .cproject:
+ * DEBUG is defined for the Debug configuration, not Release). Compiled out
+ * entirely in Release, not just silenced: zero flash/CPU/UART cost in
+ * production, and nothing here leaks task-layout details into a shipped
+ * build's log output. osThreadGetStackSpace() reports the WORST-EVER free
+ * space for that task since boot (FreeRTOS's uxTaskGetStackHighWaterMark()
+ * is a one-way ratchet, not a live reading) — sampling it periodically is
+ * what makes the trend ("is some task's margin shrinking over time")
+ * visible on COM6 across a long run. */
 static void report_stack(const char *name, osThreadId_t handle)
 {
     uint32_t bytes_free = osThreadGetStackSpace(handle);
@@ -115,6 +125,7 @@ static void report_stack(const char *name, osThreadId_t handle)
         diag_log(buf);
     }
 }
+#endif
 
 void app_housekeep_task(void *argument)
 {
@@ -137,11 +148,13 @@ void app_housekeep_task(void *argument)
 
         if (++tick >= 10) { /* stack watermarks every ~10s, not every tick */
             tick = 0;
+#ifdef DEBUG
             report_stack("Net", NetTaskHandle);
             report_stack("ScpiShort", ScpiShortTaskHandle);
             report_stack("ScpiLong", ScpiLongTaskHandle);
             report_stack("Http", HttpTaskHandle);
             report_stack("Housekeep", HousekeepTaskHandle);
+#endif
 
             char wake_buf[64];
             int wn = snprintf(wake_buf, sizeof(wake_buf), "NET WAKE: isr=%lu poll=%lu int_pin=%d\r\n",

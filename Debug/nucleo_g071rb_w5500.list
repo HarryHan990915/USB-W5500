@@ -20051,9 +20051,10 @@ void app_scpi_long_task(void *argument)
 	...
 
 0800714c <report_stack>:
-    }
-}
-
+ * space for that task since boot (FreeRTOS's uxTaskGetStackHighWaterMark()
+ * is a one-way ratchet, not a live reading) — sampling it periodically is
+ * what makes the trend ("is some task's margin shrinking over time")
+ * visible on COM6 across a long run. */
 static void report_stack(const char *name, osThreadId_t handle)
 {
  800714c:	b590      	push	{r4, r7, lr}
@@ -20097,6 +20098,7 @@ static void report_stack(const char *name, osThreadId_t handle)
  8007190:	080134f8 	.word	0x080134f8
 
 08007194 <app_housekeep_task>:
+#endif
 
 void app_housekeep_task(void *argument)
 {
@@ -20153,6 +20155,7 @@ void app_housekeep_task(void *argument)
             tick = 0;
  80071dc:	2300      	movs	r3, #0
  80071de:	653b      	str	r3, [r7, #80]	@ 0x50
+#ifdef DEBUG
             report_stack("Net", NetTaskHandle);
  80071e0:	4b25      	ldr	r3, [pc, #148]	@ (8007278 <app_housekeep_task+0xe4>)
  80071e2:	681a      	ldr	r2, [r3, #0]
@@ -20188,6 +20191,7 @@ void app_housekeep_task(void *argument)
  800721e:	0011      	movs	r1, r2
  8007220:	0018      	movs	r0, r3
  8007222:	f7ff ff93 	bl	800714c <report_stack>
+#endif
 
             char wake_buf[64];
             int wn = snprintf(wake_buf, sizeof(wake_buf), "NET WAKE: isr=%lu poll=%lu int_pin=%d\r\n",

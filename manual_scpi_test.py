@@ -21,9 +21,11 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 PORT = 5025
+HTTP_PORT = 80
 DELAY = 0.3  # seconds between commands
 IDN_PREFIX = "Company,CableTester"
 
@@ -249,10 +251,59 @@ CASES = [
     ('TEST:LED:STATus?', None),
 ]
 
-# Cycled through by semicolon_burst_test() below — same restriction (basic +
-# TEST:LED:* only), queries only so every command always produces a reply to
-# count.
-BASIC_QUERY_CMDS = ['*IDN?', '*TST?', 'TEST:LED:STATus?', 'TEST:LED:INTerval?']
+# Cycled through by semicolon_burst_test() below — basic + TEST:LED:* only.
+# Not all queries (TEST:LED:BLINk/ABORt aren't "?" commands), but every one
+# of these still produces exactly one reply field ("OK" for BLINk/ABORt, see
+# L3_App/scpi_commands.c's TEST_LedBlink()/TEST_LedAbort() — both ack with
+# "OK" specifically so a dropped command is distinguishable from silence),
+# so every command here still counts 1-for-1 against group_size.
+BASIC_QUERY_CMDS = ['*IDN?', '*TST?', 'TEST:LED:STATus?', 'TEST:LED:INTerval?',
+                     'TEST:LED:BLINk 10', 'TEST:LED:ABORt']
+
+
+def parse_reply_fields(raw, cmds):
+    """Splits `raw` into one field per command in `cmds`, following the SAME
+    rule the vendored scpi-parser uses for inserting ';' between chained
+    results (see ThirdParty/scpi-parser/libscpi/src/parser.c's
+    processCommand()): a ';' only ever precedes a QUERY command's output
+    (and only once something has already been written) — a non-query
+    command's "OK" ack (see TEST_LedBlink()/TEST_LedAbort() in
+    L3_App/scpi_commands.c) has NO separator before it and lands glued
+    directly onto whatever preceded it. A naive str.split(';') undercounts
+    fields whenever a non-query command follows anything in the same chain
+    — this walks the expected structure instead so BLINk/ABORt's "OK" isn't
+    mistaken for lost data.
+
+    Returns a list of field strings, one per cmd that was actually found —
+    shorter than `cmds` means something genuinely didn't make it (or hasn't
+    arrived yet)."""
+    fields = []
+    pos = 0
+    first_output = True
+    for cmd in cmds:
+        is_query = cmd.strip().endswith("?")
+        if not first_output and is_query:
+            if pos < len(raw) and raw[pos] == ';':
+                pos += 1
+            else:
+                break  # expected separator missing — nothing past here is this round's
+        if is_query:
+            next_semi = raw.find(";", pos)
+            next_ok = raw.find('"OK"', pos)
+            candidates = [x for x in (next_semi, next_ok) if x != -1]
+            end = min(candidates) if candidates else len(raw)
+            if end == pos and next_ok != pos:
+                break  # nothing here to claim as this query's value
+            fields.append(raw[pos:end])
+            pos = end
+        else:
+            if raw[pos:pos + 4] == '"OK"':
+                fields.append('"OK"')
+                pos += 4
+            else:
+                break  # expected "OK" ack not found at this position
+        first_output = False
+    return fields
 
 
 def semicolon_burst_test(ip, rounds=20, group_size=4, round_pause=0.5):
@@ -333,7 +384,7 @@ def semicolon_burst_test(ip, rounds=20, group_size=4, round_pause=0.5):
             total_sent += group_size
 
             reply_line = read_one_line(3.0)
-            parts = reply_line.split(";") if reply_line else []
+            parts = parse_reply_fields(reply_line, cmds) if reply_line else []
 
             total_received += len(parts)
             lost = group_size - len(parts)
@@ -365,6 +416,79 @@ def semicolon_burst_test(ip, rounds=20, group_size=4, round_pause=0.5):
     return total_sent, total_received
 
 
+def http_check(ip, timeout=5.0):
+    """One GET of the device's HTTP page. Returns (ok, elapsed_seconds, detail)."""
+    url = f"http://{ip}:{HTTP_PORT}/"
+    start = time.time()
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            body = resp.read()
+            elapsed = time.time() - start
+            return True, elapsed, f"HTTP {resp.status}, {len(body)} bytes"
+    except Exception as e:
+        elapsed = time.time() - start
+        return False, elapsed, f"{type(e).__name__}: {e}"
+
+
+def soak_test(ip, minutes=30, cycle_pause=2.0):
+    """Long-running combined stress test: each cycle runs a semicolon-burst
+    SCPI batch, a plain burst SCPI batch, and one HTTP page fetch, repeating
+    for `minutes` minutes straight (Ctrl+C stops early and still prints the
+    summary). Each SCPI sub-test opens and cleanly closes its own
+    connection per cycle (SCPI_SLOTS==1 on this device — only one client at
+    a time — this mirrors realistic usage: connect, do some work,
+    disconnect) rather than holding one connection the whole run.
+
+    A failure in any one cycle is logged and the soak continues — the goal
+    is to see whether failures stay rare/transient over a long run or start
+    compounding/getting worse (the kind of thing that only shows up after
+    many minutes, not a 30-second test), not to stop at the first hiccup."""
+    end = time.time() + minutes * 60
+    cycle = 0
+    totals = {"scpi_sent": 0, "scpi_recv": 0, "http_ok": 0, "http_fail": 0}
+
+    print(f"=== Soak test: {minutes} min against {ip} (Ctrl+C to stop early) ===\n")
+    try:
+        while time.time() < end:
+            cycle += 1
+            remaining_min = (end - time.time()) / 60
+            print(f"--- Cycle {cycle} ({remaining_min:.1f} min left) ---")
+
+            try:
+                sent, recv = semicolon_burst_test(ip, rounds=8, group_size=3, round_pause=0.3)
+                totals["scpi_sent"] += sent
+                totals["scpi_recv"] += recv
+            except Exception as e:
+                print(f"[cycle {cycle}] semicolon-burst FAILED: {e}")
+
+            try:
+                sent, recv = burst_test(ip, rounds=8, burst_size=5, cmd="*IDN?",
+                                         expected="Company,CableTester,SN001,FW1.0", round_pause=0.3)
+                totals["scpi_sent"] += sent
+                totals["scpi_recv"] += recv
+            except Exception as e:
+                print(f"[cycle {cycle}] plain burst FAILED: {e}")
+
+            ok, elapsed, detail = http_check(ip)
+            if ok:
+                totals["http_ok"] += 1
+                print(f"[cycle {cycle}] HTTP OK in {elapsed * 1000:.0f}ms — {detail}")
+            else:
+                totals["http_fail"] += 1
+                print(f"[cycle {cycle}] HTTP FAILED after {elapsed * 1000:.0f}ms — {detail}")
+
+            print()
+            time.sleep(cycle_pause)
+    except KeyboardInterrupt:
+        print("\nStopped early by user (Ctrl+C).")
+
+    print("=== Soak test summary ===")
+    print(f"Cycles completed: {cycle}")
+    print(f"SCPI reply fields: {totals['scpi_recv']}/{totals['scpi_sent']} received")
+    print(f"HTTP: {totals['http_ok']} ok, {totals['http_fail']} failed")
+    return totals
+
+
 def main():
     import argparse
 
@@ -381,6 +505,11 @@ def main():
                          help="Semicolon-burst test: `--size` DIFFERENT basic/TEST:LED commands "
                               "joined with ';' on ONE line (standard SCPI multi-command syntax) — "
                               "checks whether any of the ';'-separated reply fields go missing.")
+    parser.add_argument("--soak", action="store_true",
+                         help="Long-running combined test: alternates semicolon-burst, plain burst, "
+                              "and HTTP page fetches for `--minutes` minutes straight. Ctrl+C stops "
+                              "early and still prints the summary.")
+    parser.add_argument("--minutes", type=float, default=30, help="--soak only: duration in minutes (default 30)")
     parser.add_argument("--rounds", type=int, default=20, help="Burst modes: number of rounds (default 20)")
     parser.add_argument("--size", type=int, default=5, help="Burst modes: commands per round (default 5)")
     parser.add_argument("--cmd", default="*IDN?", help="--burst only: command to repeat (default *IDN?)")
@@ -389,8 +518,8 @@ def main():
                               "client leaves between commands; manual typing naturally gives >=1s.")
     args = parser.parse_args()
 
-    if args.burst and args.semicolon:
-        print("Pass only one of --burst / --semicolon.")
+    if sum([args.burst, args.semicolon, args.soak]) > 1:
+        print("Pass only one of --burst / --semicolon / --soak.")
         sys.exit(2)
 
     if args.ip:
@@ -414,6 +543,10 @@ def main():
         sent, received = semicolon_burst_test(ip, rounds=args.rounds, group_size=args.size,
                                                round_pause=args.pause)
         sys.exit(0 if sent == received else 1)
+
+    if args.soak:
+        totals = soak_test(ip, minutes=args.minutes)
+        sys.exit(0 if totals["scpi_sent"] == totals["scpi_recv"] and totals["http_fail"] == 0 else 1)
 
     print(f"Connecting to {ip}:{PORT} ...")
     s = socket.create_connection((ip, PORT), timeout=5)

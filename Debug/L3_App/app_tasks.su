@@ -3,5 +3,5 @@
 ../L3_App/app_tasks.c:78:6:app_scpi_short_task	16	static
 ../L3_App/app_tasks.c:86:6:app_http_task	16	static
 ../L3_App/app_tasks.c:95:6:app_scpi_long_task	16	static
-../L3_App/app_tasks.c:109:13:report_stack	88	static
-../L3_App/app_tasks.c:119:6:app_housekeep_task	120	static
+../L3_App/app_tasks.c:119:13:report_stack	88	static
+../L3_App/app_tasks.c:130:6:app_housekeep_task	120	static
