@@ -1,0 +1,23 @@
+# STM32CubeIDE build output
+Debug/
+Release/
+
+# Embedded build artifact extensions (in case any land outside Debug/Release)
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+*.bin
+*.hex
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

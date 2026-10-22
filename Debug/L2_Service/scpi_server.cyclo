@@ -1,3 +1,0 @@
-../L2_Service/scpi_server.c:19:13:socket_poll	9
-../L2_Service/scpi_server.c:102:13:drain_tx_queue	5
-../L2_Service/scpi_server.c:157:6:scpi_socket_poll	3

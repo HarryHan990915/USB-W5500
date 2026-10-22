@@ -1,7 +1,0 @@
-../L3_App/led_bench.c:34:6:led_bench_init	1
-../L3_App/led_bench.c:42:6:led_bench_set_interval_ms	3
-../L3_App/led_bench.c:55:5:led_bench_get_interval_ms	1
-../L3_App/led_bench.c:64:5:led_bench_request_start	3
-../L3_App/led_bench.c:79:6:led_bench_request_abort	1
-../L3_App/led_bench.c:88:6:led_bench_get_status	1
-../L3_App/led_bench.c:97:6:led_bench_run	10

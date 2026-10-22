@@ -1,4 +1,0 @@
-../L2_Service/http_server.c:23:13:socket_poll	7
-../L2_Service/http_server.c:72:13:drain_tx_queue	4
-../L2_Service/http_server.c:120:13:check_sendok	4
-../L2_Service/http_server.c:133:6:http_socket_poll	3

@@ -1,7 +1,0 @@
-../ThirdParty/scpi-parser/libscpi/src/expression.c:53:27:numericRange	24	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:84:20:SCPI_ExprNumericListEntry	64	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:135:20:SCPI_ExprNumericListEntryInt	80	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:166:20:SCPI_ExprNumericListEntryDouble	80	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:192:27:channelSpec	40	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:226:27:channelRange	72	static
-../ThirdParty/scpi-parser/libscpi/src/expression.c:267:20:SCPI_ExprChannelListEntry	88	static

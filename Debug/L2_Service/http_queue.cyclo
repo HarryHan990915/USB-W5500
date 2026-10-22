@@ -1,3 +1,0 @@
-../L2_Service/http_queue.c:8:6:http_queue_init	1
-../L2_Service/http_queue.c:14:6:http_queue_register_tx_wake	1
-../L2_Service/http_queue.c:19:6:http_queue_notify_tx	2
