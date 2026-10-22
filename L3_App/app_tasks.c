@@ -1,9 +1,7 @@
 #include "app_tasks.h"
 #include "diag_service.h"
 #include "net_service.h"
-#include "scpi_server.h"
 #include "scpi_short_task.h"
-#include "http_server.h"
 #include "http_task.h"
 #include "led_bench.h"
 #include "cmsis_os.h"
@@ -32,6 +30,22 @@ extern osThreadId_t HousekeepTaskHandle;
  * the STACK watermarks already logged there. */
 static volatile uint32_t s_net_isr_wakes = 0;
 static volatile uint32_t s_net_timeout_wakes = 0;
+
+/* Registered protocol poll functions — see net_task_register_poll() doc
+ * comment in app_tasks.h. Populated once during app_init() (before
+ * osKernelStart()), then only ever read from here on, so no locking around
+ * it is needed once NetTask starts. */
+static net_task_poll_fn_t s_poll_fns[NET_TASK_MAX_POLLS];
+static int s_poll_fn_count = 0;
+
+int net_task_register_poll(net_task_poll_fn_t poll_fn)
+{
+    if (poll_fn == NULL || s_poll_fn_count >= NET_TASK_MAX_POLLS) {
+        return 0;
+    }
+    s_poll_fns[s_poll_fn_count++] = poll_fn;
+    return 1;
+}
 
 void app_net_task(void *argument)
 {
@@ -65,8 +79,9 @@ void app_net_task(void *argument)
             s_net_isr_wakes++;
         }
         net_service_poll();
-        scpi_socket_poll();
-        http_socket_poll();
+        for (int i = 0; i < s_poll_fn_count; i++) {
+            s_poll_fns[i]();
+        }
     }
 }
 

@@ -3,7 +3,9 @@
 #include "net_service.h"
 #include "scpi_commands.h"
 #include "scpi_queue.h"
+#include "scpi_server.h"
 #include "http_queue.h"
+#include "http_server.h"
 #include "config_service.h"
 #include "test_led.h"
 #include "led_bench.h"
@@ -20,6 +22,11 @@ void app_init(void)
     http_queue_init();
     config_service_load_and_apply();
     net_service_init();
+    /* Each protocol owns one W5500 socket and polls it independently — see
+     * net_task_register_poll() doc comment in app_tasks.h. Order here
+     * doesn't matter: each poller only touches its own socket/queues. */
+    net_task_register_poll(scpi_socket_poll);
+    net_task_register_poll(http_socket_poll);
     net_service_register_int_wake(app_net_wake_from_isr);
     /* Same callback as the EXTI wake above: ScpiShortTask uses this to wake
      * NetTask immediately after queuing a reply, instead of NetTask waiting
